@@ -1,0 +1,22 @@
+<div style="padding: 20px; font-family: sans-serif;">
+  <h1>Pedidos360 - MVP Autenticación</h1>
+
+  <div *ngIf="!isLoggedIn">
+    <p>Por favor inicia sesión con tu cuenta de Entra ID para continuar.</p>
+    <button (click)="login()" style="padding: 10px 20px; cursor: pointer;">
+      Iniciar Sesión con Microsoft
+    </button>
+  </div>
+
+  <div *ngIf="isLoggedIn">
+    <h2>¡Bienvenido, {{ userName }}!</h2>
+    <button (click)="logout()" style="padding: 5px 15px; margin-bottom: 20px;">
+      Cerrar Sesión
+    </button>
+
+    <h3>Token JWT (IdToken):</h3>
+    <textarea readonly rows="10" cols="80" style="width: 100%; word-break: break-all;">
+      {{ userToken }}
+    </textarea>
+  </div>
+</div>
