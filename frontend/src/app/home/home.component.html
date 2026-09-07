@@ -1,0 +1,16 @@
+<div class="home-container">
+  <h2>Catálogo de Productos</h2>
+  
+  <div *ngIf="loading" class="loading">
+    Cargando productos...
+  </div>
+
+  <div *ngIf="!loading" class="products-grid">
+    <div *ngFor="let product of products" class="product-card">
+      <h3>{{ product.name }}</h3>
+      <p class="price">${{ product.price }}</p>
+      <p class="description">{{ product.description }}</p>
+      <span class="category">{{ product.category }}</span>
+    </div>
+  </div>
+</div>

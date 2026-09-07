@@ -1,0 +1,13 @@
+<nav class="navbar">
+  <div class="nav-container">
+    <h1>{{ title }}</h1>
+    <div class="nav-links">
+      <a routerLink="/">Home</a>
+      <a routerLink="/admin" *ngIf="isLoggedIn">Admin</a>
+      <button *ngIf="!isLoggedIn" (click)="login()">Login</button>
+      <button *ngIf="isLoggedIn" (click)="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<router-outlet></router-outlet>

@@ -1,0 +1,95 @@
+<div class="admin-container">
+  <h2>Panel de Administración</h2>
+  
+  <div class="tabs">
+    <button (click)="setActiveTab('products')" [class.active]="activeTab === 'products'">Productos</button>
+    <button (click)="setActiveTab('categories')" [class.active]="activeTab === 'categories'">Categorías</button>
+    <button (click)="setActiveTab('users')" [class.active]="activeTab === 'users'">Usuarios</button>
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    Cargando datos...
+  </div>
+
+  <!-- Products Tab -->
+  <div *ngIf="activeTab === 'products' && !loading" class="tab-content">
+    <div class="action-bar">
+      <button class="btn-primary">Nuevo Producto</button>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Precio</th>
+          <th>Categoría</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let product of products">
+          <td>{{ product.id }}</td>
+          <td>{{ product.name }}</td>
+          <td>${{ product.price }}</td>
+          <td>{{ product.category }}</td>
+          <td>
+            <button class="btn-secondary" (click)="updateProduct(product)">Editar</button>
+            <button class="btn-danger" (click)="deleteProduct(product.id)">Eliminar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Categories Tab -->
+  <div *ngIf="activeTab === 'categories' && !loading" class="tab-content">
+    <div class="action-bar">
+      <button class="btn-primary">Nueva Categoría</button>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Descripción</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let category of categories">
+          <td>{{ category.id }}</td>
+          <td>{{ category.name }}</td>
+          <td>{{ category.description }}</td>
+          <td>
+            <button class="btn-secondary">Editar</button>
+            <button class="btn-danger">Eliminar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Users Tab -->
+  <div *ngIf="activeTab === 'users' && !loading" class="tab-content">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Email</th>
+          <th>Rol</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of users">
+          <td>{{ user.id }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.role }}</td>
+          <td>
+            <button class="btn-secondary">Editar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
