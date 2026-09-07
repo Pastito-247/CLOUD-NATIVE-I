@@ -1,9 +1,9 @@
 <div class="admin-container">
-  <h2>Panel de Administración</h2>
-  
+  <h2>Panel de Administracion</h2>
+
   <div class="tabs">
     <button (click)="setActiveTab('products')" [class.active]="activeTab === 'products'">Productos</button>
-    <button (click)="setActiveTab('categories')" [class.active]="activeTab === 'categories'">Categorías</button>
+    <button (click)="setActiveTab('categories')" [class.active]="activeTab === 'categories'">Categorias</button>
     <button (click)="setActiveTab('users')" [class.active]="activeTab === 'users'">Usuarios</button>
   </div>
 
@@ -22,7 +22,7 @@
           <th>ID</th>
           <th>Nombre</th>
           <th>Precio</th>
-          <th>Categoría</th>
+          <th>Categoria</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -30,7 +30,7 @@
         <tr *ngFor="let product of products">
           <td>{{ product.id }}</td>
           <td>{{ product.name }}</td>
-          <td>${{ product.price }}</td>
+          <td>{{ product.price | currency }}</td>
           <td>{{ product.category }}</td>
           <td>
             <button class="btn-secondary" (click)="updateProduct(product)">Editar</button>
@@ -44,14 +44,14 @@
   <!-- Categories Tab -->
   <div *ngIf="activeTab === 'categories' && !loading" class="tab-content">
     <div class="action-bar">
-      <button class="btn-primary">Nueva Categoría</button>
+      <button class="btn-primary">Nueva Categoria</button>
     </div>
     <table class="data-table">
       <thead>
         <tr>
           <th>ID</th>
           <th>Nombre</th>
-          <th>Descripción</th>
+          <th>Descripcion</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -69,9 +69,15 @@
     </table>
   </div>
 
-  <!-- Users Tab -->
+  <!-- Users Tab (API PRIVADA - Access Token requerido) -->
   <div *ngIf="activeTab === 'users' && !loading" class="tab-content">
-    <table class="data-table">
+    <div *ngIf="userRole" style="margin-bottom:8px; color:#60a5fa; font-weight:600;">
+      Rol del usuario: {{ userRole }}
+    </div>
+    <div *ngIf="usersError" class="error-message" style="background:#fee2e2; color:#991b1b; padding:12px; border-radius:6px; margin-bottom:12px;">
+      {{ usersError }}
+    </div>
+    <table class="data-table" *ngIf="!usersError">
       <thead>
         <tr>
           <th>ID</th>

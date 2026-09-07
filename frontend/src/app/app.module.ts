@@ -7,7 +7,7 @@ import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
 import { AdminComponent } from './admin/admin.component';
 
-import { MSAL_INSTANCE, MsalService, MsalGuard, MsalInterceptor, MsalBroadcastService } from '@azure/msal-angular';
+import { MSAL_INSTANCE, MsalService, MsalGuard, MsalInterceptor, MsalBroadcastService, MsalModule } from '@azure/msal-angular';
 import { IPublicClientApplication, PublicClientApplication, InteractionType, BrowserCacheLocation } from '@azure/msal-browser';
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
 
@@ -30,6 +30,14 @@ export function MSALInstanceFactory(): IPublicClientApplication {
   });
 }
 
+// Endpoint -> scopes requeridos para ese endpoint.
+// Los endpoints privados obtienen el access token con el scope 'access_as_user'.
+// Los endpoints publicos (catálogo, categorías) quedan fuera del mapa para que
+// no se les adjunte token innecesariamente.
+export const protectedResourceMap: Map<string, Array<string>> = new Map([
+  [environment.usersUrl, [environment.apiScope]]
+]);
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -40,7 +48,31 @@ export function MSALInstanceFactory(): IPublicClientApplication {
   imports: [
     BrowserModule,
     HttpClientModule,
-    AppRoutingModule
+    AppRoutingModule,
+    // Configura el interceptor con el mapa de recursos protegidos y el tipo de interaccion
+    MsalModule.forRoot(
+      new PublicClientApplication({
+        auth: {
+          clientId: environment.msalConfig.auth.clientId,
+          authority: environment.msalConfig.auth.authority,
+          redirectUri: environment.msalConfig.auth.redirectUri
+        },
+        cache: {
+          cacheLocation: BrowserCacheLocation.LocalStorage,
+          storeAuthStateInCookie: false
+        },
+        system: {
+          allowNativeBroker: false
+        }
+      }),
+      {
+        interactionType: InteractionType.Popup
+      },
+      {
+        interactionType: InteractionType.Popup,
+        protectedResourceMap
+      }
+    )
   ],
   providers: [
     {

@@ -4,13 +4,15 @@ import com.ecommerce.users.model.User;
 import com.ecommerce.users.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = "*")
+// API PRIVADA: requiere access token de Entra ID con rol 'admin'
+@PreAuthorize("hasRole('admin')")
 public class UserController {
     
     @Autowired
