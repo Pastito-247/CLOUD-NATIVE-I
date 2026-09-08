@@ -18,7 +18,9 @@ public class UserController {
     @Autowired
     private UserService userService;
     
+    // Private endpoints - require authentication
     @GetMapping
+    @PreAuthorize("hasRole('admin')")
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
@@ -37,12 +39,24 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
     
+    @GetMapping("/me")
+    public ResponseEntity<User> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
+        // Extract email from JWT token
+        String email = extractEmailFromToken(authHeader);
+        return userService.getUserByEmail(email)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+    
+    // Admin endpoints
     @PostMapping
+    @PreAuthorize("hasRole('admin')")
     public ResponseEntity<User> createUser(@RequestBody User user) {
         return ResponseEntity.ok(userService.createUser(user));
     }
     
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('admin')")
     public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User user) {
         try {
             return ResponseEntity.ok(userService.updateUser(id, user));
@@ -52,6 +66,7 @@ public class UserController {
     }
     
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('admin')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         try {
             userService.deleteUser(id);
@@ -59,5 +74,14 @@ public class UserController {
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+    
+    private String extractEmailFromToken(String authHeader) {
+        // Simplified - in production, decode JWT properly
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            // This would need proper JWT decoding
+            return "user@example.com";
+        }
+        return null;
     }
 }

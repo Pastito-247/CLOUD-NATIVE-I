@@ -19,8 +19,16 @@ export class HomeComponent implements OnInit {
   }
 
   loadPublicData(): void {
-    // Consumir APIs directas de microservicios para pruebas locales
-    this.http.get<any[]>(`${environment.productsUrl}`).subscribe(
+    // Consumir APIs públicas (no requieren autenticación)
+    const productsUrl = environment.apiGatewayUrl ? 
+      `${environment.apiGatewayUrl}/products/public` : 
+      `${environment.productsUrl}/public`;
+    
+    const categoriesUrl = environment.apiGatewayUrl ? 
+      `${environment.apiGatewayUrl}/categories/public` : 
+      `${environment.categoriesUrl}/public`;
+
+    this.http.get<any[]>(productsUrl).subscribe(
       (data) => {
         this.products = data;
         this.loading = false;
@@ -31,7 +39,7 @@ export class HomeComponent implements OnInit {
       }
     );
 
-    this.http.get<any[]>(`${environment.categoriesUrl}`).subscribe(
+    this.http.get<any[]>(categoriesUrl).subscribe(
       (data) => {
         this.categories = data;
       },

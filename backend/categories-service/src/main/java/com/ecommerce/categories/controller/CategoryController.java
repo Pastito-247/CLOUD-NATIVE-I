@@ -4,6 +4,7 @@ import com.ecommerce.categories.model.Category;
 import com.ecommerce.categories.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +17,20 @@ public class CategoryController {
     @Autowired
     private CategoryService categoryService;
     
+    // Public endpoints
+    @GetMapping("/public")
+    public ResponseEntity<List<Category>> getAllCategoriesPublic() {
+        return ResponseEntity.ok(categoryService.getAllCategories());
+    }
+    
+    @GetMapping("/public/{id}")
+    public ResponseEntity<Category> getCategoryByIdPublic(@PathVariable Long id) {
+        return categoryService.getCategoryById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+    
+    // Private endpoints
     @GetMapping
     public ResponseEntity<List<Category>> getAllCategories() {
         return ResponseEntity.ok(categoryService.getAllCategories());
@@ -28,12 +43,15 @@ public class CategoryController {
                 .orElse(ResponseEntity.notFound().build());
     }
     
+    // Admin endpoints
     @PostMapping
+    @PreAuthorize("hasRole('admin')")
     public ResponseEntity<Category> createCategory(@RequestBody Category category) {
         return ResponseEntity.ok(categoryService.createCategory(category));
     }
     
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('admin')")
     public ResponseEntity<Category> updateCategory(@PathVariable Long id, @RequestBody Category category) {
         try {
             return ResponseEntity.ok(categoryService.updateCategory(id, category));
@@ -43,6 +61,7 @@ public class CategoryController {
     }
     
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('admin')")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         try {
             categoryService.deleteCategory(id);
