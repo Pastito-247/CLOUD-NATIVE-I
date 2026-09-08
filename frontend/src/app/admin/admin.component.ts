@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { MsalService } from '@azure/msal-angular';
-import { AuthService } from '../auth/auth.service';
-import { environment } from '../../environments/environment';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-admin',
@@ -15,21 +14,13 @@ export class AdminComponent implements OnInit {
   users: any[] = [];
   activeTab = 'products';
   loading = false;
-<<<<<<< Updated upstream
-  usersError = '';
-  userRole = '';
-=======
   userRoles: string[] = [];
   isAdmin = false;
->>>>>>> Stashed changes
 
   constructor(
     private http: HttpClient,
-    private msalService: MsalService,
-    private authService: AuthService
-  ) {
-    this.userRole = this.authService.getRoles().join(', ');
-  }
+    private msalService: MsalService
+  ) {}
 
   ngOnInit(): void {
     this.checkUserRoles();
@@ -48,13 +39,6 @@ export class AdminComponent implements OnInit {
 
   loadAdminData(): void {
     this.loading = true;
-<<<<<<< Updated upstream
-    this.usersError = '';
-
-    // APIs publicas (catálogo, categorías) - no requieren token
-    this.http.get<any[]>(`${environment.productsUrl}`).subscribe({
-      next: (data) => {
-=======
     
     // Consumir APIs privadas (requieren access token - MSAL interceptor lo agrega automáticamente)
     const productsUrl = environment.apiGatewayUrl ? 
@@ -71,52 +55,32 @@ export class AdminComponent implements OnInit {
 
     this.http.get<any[]>(productsUrl).subscribe(
       (data) => {
->>>>>>> Stashed changes
         this.products = data;
         this.loading = false;
       },
-      error: (error) => {
+      (error) => {
         console.error('Error loading products:', error);
         this.loading = false;
       }
-    });
+    );
 
-<<<<<<< Updated upstream
-    this.http.get<any[]>(`${environment.categoriesUrl}`).subscribe({
-      next: (data) => {
-=======
     this.http.get<any[]>(categoriesUrl).subscribe(
       (data) => {
->>>>>>> Stashed changes
         this.categories = data;
       },
-      error: (error) => {
+      (error) => {
         console.error('Error loading categories:', error);
       }
-    });
+    );
 
-<<<<<<< Updated upstream
-    // API PRIVADA (users) - requiere access token con scope 'access_as_user' y rol admin
-    // El MsalInterceptor adjunta automaticamente el Bearer token gracias al protectedResourceMap
-    this.http.get<any[]>(`${environment.usersUrl}`).subscribe({
-      next: (data) => {
-=======
     this.http.get<any[]>(usersUrl).subscribe(
       (data) => {
->>>>>>> Stashed changes
         this.users = data;
       },
-      error: (error) => {
+      (error) => {
         console.error('Error loading users:', error);
-        if (error.status === 401) {
-          this.usersError = 'Token no valido o expirado. Intente iniciar sesion de nuevo.';
-        } else if (error.status === 403) {
-          this.usersError = 'Acceso denegado. Se requiere rol de administrador.';
-        } else {
-          this.usersError = 'Error al cargar usuarios: ' + (error.message || 'Error desconocido');
-        }
       }
-    });
+    );
   }
 
   setActiveTab(tab: string): void {
@@ -124,26 +88,14 @@ export class AdminComponent implements OnInit {
   }
 
   createProduct(): void {
-<<<<<<< Updated upstream
-=======
-    // Implementar creación de producto (API privada con access token)
->>>>>>> Stashed changes
     console.log('Create product');
   }
 
   updateProduct(product: any): void {
-<<<<<<< Updated upstream
-=======
-    // Implementar actualización de producto (API privada con access token)
->>>>>>> Stashed changes
     console.log('Update product', product);
   }
 
   deleteProduct(productId: string): void {
-<<<<<<< Updated upstream
-=======
-    // Implementar eliminación de producto (API privada con access token)
->>>>>>> Stashed changes
     console.log('Delete product', productId);
   }
 }

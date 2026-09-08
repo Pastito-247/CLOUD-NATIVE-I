@@ -11,20 +11,19 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
-// API PRIVADA: requiere access token de Entra ID con rol 'admin'
-@PreAuthorize("hasRole('admin')")
 public class UserController {
     
     @Autowired
     private UserService userService;
     
-    // Private endpoints - require authentication
+    // Admin endpoints - require admin role
     @GetMapping
     @PreAuthorize("hasRole('admin')")
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
     
+    // Private endpoints - require authentication (any role)
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Long id) {
         return userService.getUserById(id)
@@ -40,15 +39,15 @@ public class UserController {
     }
     
     @GetMapping("/me")
-    public ResponseEntity<User> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
-        // Extract email from JWT token
-        String email = extractEmailFromToken(authHeader);
+    public ResponseEntity<User> getCurrentUser(org.springframework.security.core.Authentication authentication) {
+        // Extract email from JWT authentication
+        String email = authentication.getName();
         return userService.getUserByEmail(email)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
     
-    // Admin endpoints
+    // Admin endpoints - require admin role
     @PostMapping
     @PreAuthorize("hasRole('admin')")
     public ResponseEntity<User> createUser(@RequestBody User user) {
@@ -74,14 +73,5 @@ public class UserController {
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-    }
-    
-    private String extractEmailFromToken(String authHeader) {
-        // Simplified - in production, decode JWT properly
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            // This would need proper JWT decoding
-            return "user@example.com";
-        }
-        return null;
     }
 }

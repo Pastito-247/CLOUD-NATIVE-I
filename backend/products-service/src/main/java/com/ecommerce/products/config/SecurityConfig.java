@@ -34,13 +34,11 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints
+                // Public endpoints - no authentication required
                 .requestMatchers("/api/products/public/**").permitAll()
-                .requestMatchers("/api/products").permitAll()
-                .requestMatchers("/api/products/**").permitAll()
-                // Private endpoints (require authentication)
-                .requestMatchers("/api/products/admin/**").authenticated()
-                .requestMatchers("/api/products/private/**").authenticated()
+                // Private endpoints - require JWT authentication
+                .requestMatchers("/api/products").authenticated()
+                .requestMatchers("/api/products/**").authenticated()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

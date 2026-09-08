@@ -73,12 +73,4 @@ public class OrderController {
             return ResponseEntity.notFound().build();
         }
     }
-    
-    private String extractEmailFromToken(String authHeader) {
-        // Simplified - in production, decode JWT properly
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return "user@example.com";
-        }
-        return null;
-    }
 }

@@ -8,15 +8,8 @@ import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
 import { AdminComponent } from './admin/admin.component';
 
-<<<<<<< Updated upstream
-import { MSAL_INSTANCE, MsalService, MsalGuard, MsalInterceptor, MsalBroadcastService, MsalModule } from '@azure/msal-angular';
-import { IPublicClientApplication, PublicClientApplication, InteractionType, BrowserCacheLocation } from '@azure/msal-browser';
-import { HTTP_INTERCEPTORS } from '@angular/common/http';
-
-=======
 import { MsalModule, MsalInterceptor, MsalGuard, MsalBroadcastService, MsalService } from '@azure/msal-angular';
 import { BrowserCacheLocation, InteractionType, PublicClientApplication } from '@azure/msal-browser';
->>>>>>> Stashed changes
 import { environment } from '../environments/environment';
 
 const isIE = window.navigator.userAgent.indexOf('MSIE ') > -1 || window.navigator.userAgent.indexOf('Trident/') > -1;
@@ -36,15 +29,6 @@ export function MSALInstanceFactory(): PublicClientApplication {
   });
 }
 
-<<<<<<< Updated upstream
-// Endpoint -> scopes requeridos para ese endpoint.
-// Los endpoints privados obtienen el access token con el scope 'access_as_user'.
-// Los endpoints publicos (catálogo, categorías) quedan fuera del mapa para que
-// no se les adjunte token innecesariamente.
-export const protectedResourceMap: Map<string, Array<string>> = new Map([
-  [environment.usersUrl, [environment.apiScope]]
-]);
-=======
 export function MSALInterceptorConfigFactory() {
   return {
     interactionType: InteractionType.Popup,
@@ -66,7 +50,6 @@ export function MSALGuardConfigFactory() {
     }
   };
 }
->>>>>>> Stashed changes
 
 @NgModule({
   declarations: [
@@ -79,38 +62,11 @@ export function MSALGuardConfigFactory() {
     BrowserModule,
     AppRoutingModule,
     HttpClientModule,
-<<<<<<< Updated upstream
-    AppRoutingModule,
-    // Configura el interceptor con el mapa de recursos protegidos y el tipo de interaccion
-    MsalModule.forRoot(
-      new PublicClientApplication({
-        auth: {
-          clientId: environment.msalConfig.auth.clientId,
-          authority: environment.msalConfig.auth.authority,
-          redirectUri: environment.msalConfig.auth.redirectUri
-        },
-        cache: {
-          cacheLocation: BrowserCacheLocation.LocalStorage,
-          storeAuthStateInCookie: false
-        },
-        system: {
-          allowNativeBroker: false
-        }
-      }),
-      {
-        interactionType: InteractionType.Popup
-      },
-      {
-        interactionType: InteractionType.Popup,
-        protectedResourceMap
-      }
-=======
     FormsModule,
     MsalModule.forRoot(
       MSALInstanceFactory,
       MSALInterceptorConfigFactory,
       MSALGuardConfigFactory
->>>>>>> Stashed changes
     )
   ],
   providers: [
