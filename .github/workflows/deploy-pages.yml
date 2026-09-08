@@ -27,7 +27,7 @@ jobs:
 
     - name: Build Angular app
       working-directory: ./frontend
-      run: npm run build -- --configuration production --base-href /ecommerce-tech/
+      run: npm run build -- --configuration production --base-href /tuki-tech/
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3

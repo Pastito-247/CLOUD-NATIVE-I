@@ -8,7 +8,7 @@ import { environment } from '../environments/environment';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
-  title = 'E-Commerce Tech';
+  title = 'Tuki-Tech';
   isLoggedIn = false;
   userRoles: string[] = [];
   userEmail = '';
