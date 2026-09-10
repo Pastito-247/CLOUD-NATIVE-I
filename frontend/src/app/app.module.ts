@@ -19,12 +19,11 @@ export function MSALInstanceFactory(): PublicClientApplication {
     auth: {
       clientId: environment.msalConfig.auth.clientId,
       authority: environment.msalConfig.auth.authority,
-      redirectUri: environment.msalConfig.auth.redirectUri,
-      postLogoutRedirectUri: environment.msalConfig.auth.postLogoutRedirectUri
+      redirectUri: environment.msalConfig.auth.redirectUri
     },
     cache: {
-      cacheLocation: environment.msalConfig.cache.cacheLocation,
-      storeAuthStateInCookie: environment.msalConfig.cache.storeAuthStateInCookie
+      cacheLocation: BrowserCacheLocation.LocalStorage,
+      storeAuthStateInCookie: false
     }
   });
 }
@@ -33,7 +32,6 @@ export function MSALInterceptorConfigFactory() {
   return {
     interactionType: InteractionType.Popup,
     protectedResourceMap: new Map([
-      [environment.apiGatewayUrl, environment.scopes],
       [environment.productsUrl, environment.scopes],
       [environment.categoriesUrl, environment.scopes],
       [environment.usersUrl, environment.scopes],

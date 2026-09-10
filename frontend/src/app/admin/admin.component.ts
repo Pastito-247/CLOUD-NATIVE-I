@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { MsalService } from '@azure/msal-angular';
-import { environment } from '../environments/environment';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-admin',
@@ -39,19 +39,11 @@ export class AdminComponent implements OnInit {
 
   loadAdminData(): void {
     this.loading = true;
-    
+
     // Consumir APIs privadas (requieren access token - MSAL interceptor lo agrega automáticamente)
-    const productsUrl = environment.apiGatewayUrl ? 
-      `${environment.apiGatewayUrl}/products` : 
-      environment.productsUrl;
-    
-    const categoriesUrl = environment.apiGatewayUrl ? 
-      `${environment.apiGatewayUrl}/categories` : 
-      environment.categoriesUrl;
-    
-    const usersUrl = environment.apiGatewayUrl ? 
-      `${environment.apiGatewayUrl}/users` : 
-      environment.usersUrl;
+    const productsUrl = environment.productsUrl;
+    const categoriesUrl = environment.categoriesUrl;
+    const usersUrl = environment.usersUrl;
 
     this.http.get<any[]>(productsUrl).subscribe(
       (data) => {

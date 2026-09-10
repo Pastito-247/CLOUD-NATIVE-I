@@ -57,7 +57,7 @@ export const environment = {
 
   productsUrl: 'http://localhost:8081/api/products',
   categoriesUrl: 'http://localhost:8082/api/categories',
-  usersUrl: 'http://localhost:${env.USERS_SERVICE_PORT || 8083}/api/users',
+  usersUrl: 'http://localhost:${env.USERS_SERVICE_PORT || 8080}/api/users',
   ordersUrl: 'http://localhost:8084/api/orders',
 
   enableAuth: true,
@@ -65,12 +65,14 @@ export const environment = {
   authority: '${env.ENTRA_AUTHORITY}',
   apiUri: '${env.ENTRA_API_URI}',
   apiScope: '${env.ENTRA_API_SCOPE}',
+  scopes: ['${env.ENTRA_API_SCOPE}'],
 
   msalConfig: {
     auth: {
       clientId: '${env.ENTRA_CLIENT_ID}',
       authority: '${env.ENTRA_AUTHORITY}',
-      redirectUri: '${env.FRONTEND_REDIRECT_URI}'
+      redirectUri: '${env.FRONTEND_REDIRECT_URI}',
+      postLogoutRedirectUri: '${env.FRONTEND_REDIRECT_URI}'
     },
     cache: {
       cacheLocation: 'localStorage',
@@ -88,18 +90,24 @@ export const environment = {
   production: true,
 
   apiGatewayUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod',
+  productsUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/products',
+  categoriesUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/categories',
+  usersUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/users',
+  ordersUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/orders',
 
   enableAuth: true,
 
   authority: '${env.ENTRA_AUTHORITY}',
   apiUri: '${env.ENTRA_API_URI}',
   apiScope: '${env.ENTRA_API_SCOPE}',
+  scopes: ['${env.ENTRA_API_SCOPE}'],
 
   msalConfig: {
     auth: {
       clientId: '${env.ENTRA_CLIENT_ID}',
       authority: '${env.ENTRA_AUTHORITY}',
-      redirectUri: 'https://your-frontend-domain.com'
+      redirectUri: 'https://your-frontend-domain.com',
+      postLogoutRedirectUri: 'https://your-frontend-domain.com'
     },
     cache: {
       cacheLocation: 'localStorage',

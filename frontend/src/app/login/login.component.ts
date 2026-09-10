@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { MsalService } from '@azure/msal-angular';
+// import { MsalService } from '@azure/msal-angular';
 import { environment } from '../../environments/environment';
 
 @Component({
@@ -10,19 +10,21 @@ import { environment } from '../../environments/environment';
 export class LoginComponent {
   errorMessage = '';
 
-  constructor(private msalService: MsalService) {}
+  constructor() {} // private msalService: MsalService) {}
 
   login(): void {
-    this.msalService.loginPopup({
-      scopes: [environment.apiScope]
-    }).subscribe({
-      next: (result) => {
-        console.log('Login successful', result);
-      },
-      error: (error) => {
-        console.error('Login error', error);
-        this.errorMessage = error.message || 'Error al iniciar sesion';
-      }
-    });
+    // Temporarily disabled - MSAL not configured
+    // this.msalService.loginPopup({
+    //   scopes: [environment.apiScope]
+    // }).subscribe({
+    //   next: (result) => {
+    //     console.log('Login successful', result);
+    //   },
+    //   error: (error) => {
+    //     console.error('Login error', error);
+    //     this.errorMessage = error.message || 'Error al iniciar sesion';
+    //   }
+    // });
+    this.errorMessage = 'Login temporarily disabled - MSAL configuration issue';
   }
 }

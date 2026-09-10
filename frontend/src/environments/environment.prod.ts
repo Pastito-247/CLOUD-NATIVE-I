@@ -5,18 +5,24 @@ export const environment = {
   production: true,
 
   apiGatewayUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod',
+  productsUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/products',
+  categoriesUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/categories',
+  usersUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/users',
+  ordersUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/orders',
 
   enableAuth: true,
 
-  authority: 'https://login.microsoftonline.com/TU_TENANT_ID/v2.0',
-  apiUri: 'api://TU_CLIENT_ID',
-  apiScope: 'api://TU_CLIENT_ID/access_as_user',
+  authority: 'https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0',
+  apiUri: 'api://66c0f84b-3701-42fb-9189-3f4092cba201',
+  apiScope: 'api://66c0f84b-3701-42fb-9189-3f4092cba201/access_as_user',
+  scopes: ['api://66c0f84b-3701-42fb-9189-3f4092cba201/access_as_user'],
 
   msalConfig: {
     auth: {
-      clientId: 'TU_CLIENT_ID',
-      authority: 'https://login.microsoftonline.com/TU_TENANT_ID/v2.0',
-      redirectUri: 'https://your-frontend-domain.com'
+      clientId: '66c0f84b-3701-42fb-9189-3f4092cba201',
+      authority: 'https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0',
+      redirectUri: 'https://your-frontend-domain.com',
+      postLogoutRedirectUri: 'https://your-frontend-domain.com'
     },
     cache: {
       cacheLocation: 'localStorage',

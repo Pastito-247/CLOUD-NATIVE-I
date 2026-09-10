@@ -20,13 +20,8 @@ export class HomeComponent implements OnInit {
 
   loadPublicData(): void {
     // Consumir APIs públicas (no requieren autenticación)
-    const productsUrl = environment.apiGatewayUrl ? 
-      `${environment.apiGatewayUrl}/products/public` : 
-      `${environment.productsUrl}/public`;
-    
-    const categoriesUrl = environment.apiGatewayUrl ? 
-      `${environment.apiGatewayUrl}/categories/public` : 
-      `${environment.categoriesUrl}/public`;
+    const productsUrl = `${environment.productsUrl}/public`;
+    const categoriesUrl = `${environment.categoriesUrl}/public`;
 
     this.http.get<any[]>(productsUrl).subscribe(
       (data) => {

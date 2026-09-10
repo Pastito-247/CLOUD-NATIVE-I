@@ -3,8 +3,8 @@
     <h1>{{ title }}</h1>
     <div class="nav-links">
       <a routerLink="/">Home</a>
-      <a routerLink="/admin" *ngIf="isLoggedIn && isAdminUser">Admin</a>
-      <span *ngIf="isLoggedIn && userName" style="margin-left:12px; font-weight:bold; color: #22c55e;">{{ userName }}</span>
+      <a routerLink="/admin" *ngIf="isLoggedIn && isAdmin">Admin</a>
+      <span *ngIf="isLoggedIn && userEmail" style="margin-left:12px; font-weight:bold; color: #22c55e;">{{ userEmail }}</span>
       <button *ngIf="!isLoggedIn" (click)="login()">Login</button>
       <button *ngIf="isLoggedIn" (click)="logout()">Logout</button>
     </div>

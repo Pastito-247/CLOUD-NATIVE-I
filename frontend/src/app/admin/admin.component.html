@@ -71,13 +71,10 @@
 
   <!-- Users Tab (API PRIVADA - Access Token requerido) -->
   <div *ngIf="activeTab === 'users' && !loading" class="tab-content">
-    <div *ngIf="userRole" style="margin-bottom:8px; color:#60a5fa; font-weight:600;">
-      Rol del usuario: {{ userRole }}
+    <div *ngIf="userRoles.length > 0" style="margin-bottom:8px; color:#60a5fa; font-weight:600;">
+      Roles del usuario: {{ userRoles.join(', ') }}
     </div>
-    <div *ngIf="usersError" class="error-message" style="background:#fee2e2; color:#991b1b; padding:12px; border-radius:6px; margin-bottom:12px;">
-      {{ usersError }}
-    </div>
-    <table class="data-table" *ngIf="!usersError">
+    <table class="data-table">
       <thead>
         <tr>
           <th>ID</th>

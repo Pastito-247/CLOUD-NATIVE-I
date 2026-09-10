@@ -23,11 +23,11 @@ export class AppComponent implements OnInit {
   checkLoginStatus(): void {
     const accounts = this.msalService.instance.getAllAccounts();
     this.isLoggedIn = accounts.length > 0;
-    
+
     if (this.isLoggedIn) {
       const account = accounts[0];
       this.userEmail = account.username || '';
-      
+
       // Extract roles from ID token claims
       const idTokenClaims = account.idTokenClaims as any;
       this.userRoles = idTokenClaims?.roles || [];
@@ -37,13 +37,13 @@ export class AppComponent implements OnInit {
 
   login(): void {
     this.msalService.loginPopup({
-      scopes: ['openid', 'profile']
+      scopes: [environment.apiScope]
     }).subscribe(
-      (response) => {
+      (response: any) => {
         console.log('Login success', response);
         this.checkLoginStatus();
       },
-      (error) => {
+      (error: any) => {
         console.error('Login error', error);
       }
     );
@@ -58,7 +58,7 @@ export class AppComponent implements OnInit {
         this.userEmail = '';
         this.isAdmin = false;
       },
-      (error) => {
+      (error: any) => {
         console.error('Logout error', error);
       }
     );

@@ -5,6 +5,8 @@ import com.ecommerce.orders.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,8 +39,9 @@ public class OrderController {
     }
     
     @GetMapping("/my-orders")
-    public ResponseEntity<List<Order>> getMyOrders(@RequestHeader("Authorization") String authHeader) {
-        String email = extractEmailFromToken(authHeader);
+    public ResponseEntity<List<Order>> getMyOrders(Authentication authentication) {
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String email = jwt.getClaimAsString("email");
         return ResponseEntity.ok(orderService.getOrdersByUserEmail(email));
     }
     
