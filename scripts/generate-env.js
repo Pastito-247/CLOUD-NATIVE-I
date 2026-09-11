@@ -82,18 +82,29 @@ export const environment = {
 };
 `;
 
+// --- Configuracion de produccion (GitHub Pages + backend HTTPS) ---
+// PROD_BACKEND_URL : https://tu-dominio del EC2 (via Caddy/Cloudflare). Ej: https://backend.MIDOMINIO.com
+// PROD_REDIRECT_URI: URL exacta del frontend publicado. Ej: https://USUARIO.github.io/REPO
+const prodBackend = env.PROD_BACKEND_URL || 'https://YOUR-API-GATEWAY.execute-api.region.amazonaws.com/prod';
+const prodRedirect = env.PROD_REDIRECT_URI || 'https://YOUR-FRONTEND-DOMAIN';
+
+if (!env.PROD_BACKEND_URL || !env.PROD_REDIRECT_URI) {
+  console.warn('ADVERTENCIA: PROD_BACKEND_URL o PROD_REDIRECT_URI no estan definidos en .env.');
+  console.warn('environment.prod.ts quedara con URLs placeholder (NO apto para GitHub Pages).\n');
+}
+
 // --- Escribe environment.prod.ts (produccion) ---
 const envProd = `// Archivo GENERADO por scripts/generate-env.js.
 // NO editar a mano - los valores provienen de .env en la raiz.
-// Para produccion ajusta API_GATEWAY_URL si usas un API Gateway.
+// CONFIGURACION DE PRODUCCION (GitHub Pages + backend HTTPS).
 export const environment = {
   production: true,
 
-  apiGatewayUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod',
-  productsUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/products',
-  categoriesUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/categories',
-  usersUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/users',
-  ordersUrl: 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod/orders',
+  apiGatewayUrl: '${prodBackend}',
+  productsUrl: '${prodBackend}/api/products',
+  categoriesUrl: '${prodBackend}/api/categories',
+  usersUrl: '${prodBackend}/api/users',
+  ordersUrl: '${prodBackend}/api/orders',
 
   enableAuth: true,
 
@@ -106,8 +117,8 @@ export const environment = {
     auth: {
       clientId: '${env.ENTRA_CLIENT_ID}',
       authority: '${env.ENTRA_AUTHORITY}',
-      redirectUri: 'https://your-frontend-domain.com',
-      postLogoutRedirectUri: 'https://your-frontend-domain.com'
+      redirectUri: '${prodRedirect}',
+      postLogoutRedirectUri: '${prodRedirect}'
     },
     cache: {
       cacheLocation: 'localStorage',

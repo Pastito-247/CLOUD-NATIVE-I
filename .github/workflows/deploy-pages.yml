@@ -3,12 +3,13 @@ name: Deploy Frontend to GitHub Pages
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
     - name: Checkout code
@@ -25,13 +26,37 @@ jobs:
       working-directory: ./frontend
       run: npm ci
 
+    # .env esta en .gitignore, por eso se reconstruye en CI
+    # desde las Variables del repositorio (Settings > Secrets and variables > Actions).
+    # npm run build ejecuta el prebuild que corre scripts/generate-env.js.
+    - name: Create .env from GitHub repository variables
+      run: |
+        cat > .env <<EOF
+        ENTRA_CLIENT_ID=${{ vars.ENTRA_CLIENT_ID }}
+        ENTRA_TENANT_ID=${{ vars.ENTRA_TENANT_ID }}
+        ENTRA_AUTHORITY=${{ vars.ENTRA_AUTHORITY }}
+        ENTRA_API_URI=${{ vars.ENTRA_API_URI }}
+        ENTRA_API_SCOPE=${{ vars.ENTRA_API_SCOPE }}
+        FRONTEND_REDIRECT_URI=${{ vars.FRONTEND_REDIRECT_URI }}
+        USERS_SERVICE_PORT=${{ vars.USERS_SERVICE_PORT }}
+        PROD_BACKEND_URL=${{ vars.PROD_BACKEND_URL }}
+        PROD_REDIRECT_URI=${{ vars.PROD_REDIRECT_URI }}
+        EOF
+
     - name: Build Angular app
       working-directory: ./frontend
-      run: npm run build -- --configuration production --base-href /tuki-tech/
+      run: npm run build -- --configuration production --base-href /CLOUD-NATIVE-I/
+
+    # GitHub Pages devuelve 404 para rutas no existentes en disco
+    # (/CLOUD-NATIVE-I/admin). Copiar index.html como 404.html hace
+    # que Angular maneje las rutas internas (deep links / refrescos).
+    - name: Add SPA fallback for deep links
+      working-directory: ./frontend
+      run: cp dist/ecommerce-tech/index.html dist/ecommerce-tech/404.html
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./frontend/dist/frontend
+        publish_dir: ./frontend/dist/ecommerce-tech
         force_orphan: true

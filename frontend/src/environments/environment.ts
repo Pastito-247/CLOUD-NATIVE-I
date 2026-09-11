@@ -5,7 +5,7 @@ export const environment = {
 
   productsUrl: 'http://localhost:8081/api/products',
   categoriesUrl: 'http://localhost:8082/api/categories',
-  usersUrl: 'http://localhost:8080/api/users',
+  usersUrl: 'http://localhost:8083/api/users',
   ordersUrl: 'http://localhost:8084/api/orders',
 
   enableAuth: true,
