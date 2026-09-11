@@ -1,98 +1,512 @@
 <div class="admin-container">
-  <h2>Panel de Administracion</h2>
 
+  <h2>Panel de Administración</h2>
+
+  <!-- TABS -->
   <div class="tabs">
-    <button (click)="setActiveTab('products')" [class.active]="activeTab === 'products'">Productos</button>
-    <button (click)="setActiveTab('categories')" [class.active]="activeTab === 'categories'">Categorias</button>
-    <button (click)="setActiveTab('users')" [class.active]="activeTab === 'users'">Usuarios</button>
+
+    <button
+      (click)="setActiveTab('products')"
+      [class.active]="activeTab === 'products'">
+      Productos
+    </button>
+
+    <button
+      (click)="setActiveTab('categories')"
+      [class.active]="activeTab === 'categories'">
+      Categorías
+    </button>
+
+    <button
+      (click)="setActiveTab('users')"
+      [class.active]="activeTab === 'users'">
+      Usuarios
+    </button>
+
+  </div>
+
+  <!-- MENSAJES -->
+
+  <div
+    *ngIf="successMessage"
+    style="
+      padding: 10px;
+      margin: 10px 0;
+      background: #dcfce7;
+      color: #166534;
+      border-radius: 6px;
+    ">
+    {{ successMessage }}
+  </div>
+
+  <div
+    *ngIf="errorMessage"
+    style="
+      padding: 10px;
+      margin: 10px 0;
+      background: #fee2e2;
+      color: #991b1b;
+      border-radius: 6px;
+    ">
+    {{ errorMessage }}
   </div>
 
   <div *ngIf="loading" class="loading">
     Cargando datos...
   </div>
 
-  <!-- Products Tab -->
-  <div *ngIf="activeTab === 'products' && !loading" class="tab-content">
+
+  <!-- ===================================================== -->
+  <!-- PRODUCTOS -->
+  <!-- ===================================================== -->
+
+  <div
+    *ngIf="activeTab === 'products' && !loading"
+    class="tab-content">
+
     <div class="action-bar">
-      <button class="btn-primary">Nuevo Producto</button>
+
+      <button
+        class="btn-primary"
+        (click)="createProduct()">
+        Nuevo Producto
+      </button>
+
     </div>
+
+
+    <!-- FORMULARIO PRODUCTO -->
+
+    <div
+      *ngIf="showProductForm"
+      style="
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      ">
+
+      <h3>
+        {{ editingProduct ? 'Editar Producto' : 'Nuevo Producto' }}
+      </h3>
+
+      <div
+        style="
+          display: grid;
+          gap: 12px;
+          max-width: 600px;
+        ">
+
+        <!-- NOMBRE -->
+
+        <label>
+          Nombre
+
+          <input
+            type="text"
+            [(ngModel)]="productForm.name"
+            placeholder="Nombre del producto">
+        </label>
+
+
+        <!-- DESCRIPCIÓN -->
+
+        <label>
+          Descripción
+
+          <textarea
+            [(ngModel)]="productForm.description"
+            placeholder="Descripción del producto">
+          </textarea>
+        </label>
+
+
+        <!-- PRECIO -->
+
+        <label>
+          Precio
+
+          <input
+            type="number"
+            [(ngModel)]="productForm.price"
+            min="0"
+            step="0.01">
+        </label>
+
+
+        <!-- CATEGORÍA -->
+
+        <label>
+          Categoría
+
+          <select
+            [(ngModel)]="productForm.category">
+
+            <option value="">
+              Selecciona una categoría
+            </option>
+
+            <option
+              *ngFor="let category of categories"
+              [value]="category.name">
+
+              {{ category.name }}
+
+            </option>
+
+          </select>
+
+        </label>
+
+
+        <!-- STOCK -->
+
+        <label>
+          Stock
+
+          <input
+            type="number"
+            [(ngModel)]="productForm.stockQuantity"
+            min="0">
+        </label>
+
+
+        <!-- IMAGEN -->
+
+        <label>
+          URL de imagen
+
+          <input
+            type="text"
+            [(ngModel)]="productForm.imageUrl"
+            placeholder="https://...">
+        </label>
+
+
+        <!-- BOTONES -->
+
+        <div
+          style="
+            display: flex;
+            gap: 10px;
+          ">
+
+          <button
+            class="btn-primary"
+            (click)="saveProduct()">
+
+            {{ editingProduct
+              ? 'Guardar cambios'
+              : 'Crear producto' }}
+
+          </button>
+
+          <button
+            class="btn-secondary"
+            (click)="cancelProductForm()">
+
+            Cancelar
+
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- TABLA PRODUCTOS -->
+
     <table class="data-table">
+
       <thead>
+
         <tr>
           <th>ID</th>
           <th>Nombre</th>
           <th>Precio</th>
-          <th>Categoria</th>
+          <th>Categoría</th>
+          <th>Stock</th>
           <th>Acciones</th>
         </tr>
+
       </thead>
+
       <tbody>
+
         <tr *ngFor="let product of products">
+
           <td>{{ product.id }}</td>
+
           <td>{{ product.name }}</td>
+
           <td>{{ product.price | currency }}</td>
+
           <td>{{ product.category }}</td>
+
+          <td>{{ product.stockQuantity }}</td>
+
           <td>
-            <button class="btn-secondary" (click)="updateProduct(product)">Editar</button>
-            <button class="btn-danger" (click)="deleteProduct(product.id)">Eliminar</button>
+
+            <button
+              class="btn-secondary"
+              (click)="updateProduct(product)">
+              Editar
+            </button>
+
+            <button
+              class="btn-danger"
+              (click)="deleteProduct(product.id)">
+              Eliminar
+            </button>
+
           </td>
+
         </tr>
+
+
+        <tr *ngIf="products.length === 0">
+
+          <td colspan="6">
+            No hay productos registrados.
+          </td>
+
+        </tr>
+
       </tbody>
+
     </table>
+
   </div>
 
-  <!-- Categories Tab -->
-  <div *ngIf="activeTab === 'categories' && !loading" class="tab-content">
+
+  <!-- ===================================================== -->
+  <!-- CATEGORÍAS -->
+  <!-- ===================================================== -->
+
+  <div
+    *ngIf="activeTab === 'categories' && !loading"
+    class="tab-content">
+
     <div class="action-bar">
-      <button class="btn-primary">Nueva Categoria</button>
+
+      <button
+        class="btn-primary"
+        (click)="createCategory()">
+
+        Nueva Categoría
+
+      </button>
+
     </div>
+
+
+    <!-- FORMULARIO CATEGORÍA -->
+
+    <div
+      *ngIf="showCategoryForm"
+      style="
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        max-width: 600px;
+      ">
+
+      <h3>
+        {{ editingCategory
+          ? 'Editar Categoría'
+          : 'Nueva Categoría' }}
+      </h3>
+
+
+      <div
+        style="
+          display: grid;
+          gap: 12px;
+        ">
+
+        <!-- NOMBRE -->
+
+        <label>
+          Nombre
+
+          <input
+            type="text"
+            [(ngModel)]="categoryForm.name"
+            placeholder="Ej: Computadores">
+        </label>
+
+
+        <!-- DESCRIPCIÓN -->
+
+        <label>
+          Descripción
+
+          <textarea
+            [(ngModel)]="categoryForm.description"
+            placeholder="Descripción de la categoría">
+          </textarea>
+        </label>
+
+
+        <!-- BOTONES -->
+
+        <div
+          style="
+            display: flex;
+            gap: 10px;
+          ">
+
+          <button
+            class="btn-primary"
+            (click)="saveCategory()">
+
+            {{ editingCategory
+              ? 'Guardar cambios'
+              : 'Crear categoría' }}
+
+          </button>
+
+          <button
+            class="btn-secondary"
+            (click)="cancelCategoryForm()">
+
+            Cancelar
+
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- TABLA CATEGORÍAS -->
+
     <table class="data-table">
+
       <thead>
+
         <tr>
           <th>ID</th>
           <th>Nombre</th>
-          <th>Descripcion</th>
+          <th>Descripción</th>
           <th>Acciones</th>
         </tr>
+
       </thead>
+
       <tbody>
+
         <tr *ngFor="let category of categories">
+
           <td>{{ category.id }}</td>
+
           <td>{{ category.name }}</td>
+
           <td>{{ category.description }}</td>
+
           <td>
-            <button class="btn-secondary">Editar</button>
-            <button class="btn-danger">Eliminar</button>
+
+            <button
+              class="btn-secondary"
+              (click)="updateCategory(category)">
+
+              Editar
+
+            </button>
+
+            <button
+              class="btn-danger"
+              (click)="deleteCategory(category.id)">
+
+              Eliminar
+
+            </button>
+
           </td>
+
         </tr>
+
+
+        <tr *ngIf="categories.length === 0">
+
+          <td colspan="4">
+            No hay categorías registradas.
+          </td>
+
+        </tr>
+
       </tbody>
+
     </table>
+
   </div>
 
-  <!-- Users Tab (API PRIVADA - Access Token requerido) -->
-  <div *ngIf="activeTab === 'users' && !loading" class="tab-content">
-    <div *ngIf="userRoles.length > 0" style="margin-bottom:8px; color:#60a5fa; font-weight:600;">
-      Roles del usuario: {{ userRoles.join(', ') }}
+
+  <!-- ===================================================== -->
+  <!-- USUARIOS -->
+  <!-- ===================================================== -->
+
+  <div
+    *ngIf="activeTab === 'users' && !loading"
+    class="tab-content">
+
+    <div
+      *ngIf="userRoles.length > 0"
+      style="
+        margin-bottom: 8px;
+        color: #60a5fa;
+        font-weight: 600;
+      ">
+
+      Roles del usuario:
+      {{ userRoles.join(', ') }}
+
     </div>
+
+
     <table class="data-table">
+
       <thead>
+
         <tr>
           <th>ID</th>
           <th>Email</th>
           <th>Rol</th>
           <th>Acciones</th>
         </tr>
+
       </thead>
+
       <tbody>
+
         <tr *ngFor="let user of users">
+
           <td>{{ user.id }}</td>
+
           <td>{{ user.email }}</td>
+
           <td>{{ user.role }}</td>
+
           <td>
-            <button class="btn-secondary">Editar</button>
+
+            <button class="btn-secondary">
+              Editar
+            </button>
+
           </td>
+
         </tr>
+
       </tbody>
+
     </table>
+
   </div>
+
 </div>
+

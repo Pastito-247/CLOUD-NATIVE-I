@@ -11,9 +11,9 @@ export const environment = {
   enableAuth: true,
 
   authority: 'https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0',
-  apiUri: 'api://66c0f84b-3701-42fb-9189-3f4092cba201',
-  apiScope: 'api://66c0f84b-3701-42fb-9189-3f4092cba201/access_as_user',
-  scopes: ['api://66c0f84b-3701-42fb-9189-3f4092cba201/access_as_user'],
+  apiUri: 'api://tuki-tech-api',
+  apiScope: 'api://tuki-tech-api/access_as_user',
+  scopes: ['api://tuki-tech-api/access_as_user'],
 
   msalConfig: {
     auth: {
