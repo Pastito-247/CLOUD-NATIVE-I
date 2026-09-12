@@ -29,19 +29,6 @@ public class CategoryController {
                 .orElse(ResponseEntity.notFound().build());
     }
     
-    // Alias publicos para el API Gateway (separan claramente ruta publica de la privada)
-    @GetMapping("/api/public/categories")
-    public ResponseEntity<List<Category>> getAllCategoriesPublicAlias() {
-        return ResponseEntity.ok(categoryService.getAllCategories());
-    }
-    
-    @GetMapping("/api/public/categories/{id}")
-    public ResponseEntity<Category> getCategoryByIdPublicAlias(@PathVariable Long id) {
-        return categoryService.getCategoryById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-    
     // Private endpoints
     @GetMapping
     public ResponseEntity<List<Category>> getAllCategories() {

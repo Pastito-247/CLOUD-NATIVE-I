@@ -110,17 +110,12 @@ export const environment = {
 Editar `src/main/resources/application.properties` en cada servicio:
 
 ```properties
-# Azure AD Configuration
+# Azure AD Configuration (JWT: issuer + audience)
 spring.security.oauth2.resourceserver.jwt.issuer-uri=https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0
-spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://login.microsoftonline.com/YOUR_TENANT_ID/discovery/v2.0/keys
+spring.security.oauth2.resourceserver.jwt.audiences=api://tuki-tech-api
 
 # CORS Configuration
-cors.allowed-origins=http://localhost:4200,https://tu-usuario.github.io/tuki-tech/
-
-# Database Configuration
-spring.datasource.url=jdbc:mysql://your-database-endpoint:3306/db_name
-spring.datasource.username=your_username
-spring.datasource.password=your_password
+cors.allowed-origins=http://localhost:4200,https://pastito-247.github.io
 ```
 
 ## Despliegue
@@ -142,18 +137,19 @@ spring.datasource.password=your_password
 
 ### AWS API Gateway
 
-1. Crea un API Gateway REST
-2. Configura recursos:
-   - `/products/public/**` → Products Service (sin autorizador)
-   - `/products/**` → Products Service (con autorizador JWT)
-   - `/categories/public/**` → Categories Service (sin autorizador)
-   - `/categories/**` → Categories Service (con autorizador JWT)
-   - `/users/**` → Users Service (con autorizador JWT)
-   - `/orders/**` → Orders Service (con autorizador JWT)
-3. Configura autorizador JWT:
+Sigue la guía completa en [API_GATEWAY_DEPLOYMENT.md](./API_GATEWAY_DEPLOYMENT.md).
+Resumen (HTTP API de AWS):
+
+1. Crea una **HTTP API** con 6 rutas y 4 integraciones HTTP al EC2:
+   - `/api/public/products/{proxy+}` → 8081 (sin autorizador)
+   - `/api/public/categories/{proxy+}` → 8082 (sin autorizador)
+   - `/api/{products|categories|users|orders}/{proxy+}` → 8081-8084 (con autorizador JWT)
+2. Configura el **JWT authorizer**:
    - Issuer: `https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0`
-   - Audience: Client ID de la aplicación Azure AD
-4. Deploya el API Gateway
+   - Audience: `api://tuki-tech-api` (Application ID URI de la API)
+3. Configura **CORS** en la API (origen de GitHub Pages) y vacía
+   `CORS_ALLOWED_ORIGINS` en el backend para no duplicar headers.
+4. Deploya y usa la URL de invocación como `PROD_BACKEND_URL`.
 
 ## Criterios de Evaluación
 
@@ -197,6 +193,8 @@ CLOUD-NATIVE-I/
 │   ├── users-service/          # Puerto 8083
 │   └── orders-service/         # Puerto 8084
 ├── AZURE_AD_SETUP.md           # Guía configuración Azure AD
+├── EC2_DEPLOYMENT.md           # Guía despliegue backend a EC2
+├── API_GATEWAY_DEPLOYMENT.md   # Guía despliegue AWS API Gateway
 └── README.md
 ```
 
