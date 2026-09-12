@@ -14,6 +14,20 @@
 
 # Environment files
 /.env
+.env
+*.env
+!/.env.example
+
+# Angular generated environment files (generados desde .env por scripts/generate-env.js)
+/frontend/src/environments/environment.ts
+/frontend/src/environments/environment.prod.ts
+
+# Llaves privadas y credenciales (NUNCA commitear)
+*.pem
+*.key
+*.ppk
+*.p12
+*.pfx
 
 # Angular CLI and build artefacts
 /.angular-cli.json
