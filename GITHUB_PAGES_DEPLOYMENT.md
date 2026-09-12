@@ -36,6 +36,8 @@ el frontend en producción:
 | `categoriesUrl` | `https://<HOST_BACKEND>/api/categories` |
 | `usersUrl` | `https://<HOST_BACKEND>/api/users` |
 | `ordersUrl` | `https://<HOST_BACKEND>/api/orders` |
+| `productsPublicUrl` | `https://<HOST_BACKEND>/api/public/products` (Home, sin login) |
+| `categoriesPublicUrl` | `https://<HOST_BACKEND>/api/public/categories` (Home, sin login) |
 
 ---
 
@@ -152,8 +154,8 @@ sudo systemctl restart caddy
 Desde tu PC (PowerShell):
 
 ```powershell
-curl https://TU-IP.sslip.io/api/products/public
-curl https://TU-IP.sslip.io/api/categories/public
+curl https://TU-IP.sslip.io/api/public/products
+curl https://TU-IP.sslip.io/api/public/categories
 ```
 
 (respectivamente con `backend.MIDOMINIO.com` si vas por la Opción B)
@@ -186,9 +188,10 @@ sudo systemctl daemon-reload
 sudo systemctl restart tuki-products tuki-categories tuki-users tuki-orders
 ```
 
-> Nota: los controllers de products/categories/orders tienen `@CrossOrigin("*")`,
-> así que igual aceptan el origen; los de users no lo tienen, por eso es clave
-> actualizar el `CORS_ALLOWED_ORIGINS` en los 4 por consistencia.
+> Nota: los controllers ya no llevan `@CrossOrigin("*")` (se quitaron al migrar a
+> la validación por `issuer` + `audience`). Todo el CORS sale del `SecurityConfig`
+> (`cors.allowed-origins`), por eso es obligatorio actualizar el
+> `CORS_ALLOWED_ORIGINS` en los 4 servicios.
 
 ---
 
@@ -266,7 +269,7 @@ https://pastito-247.github.io/CLOUD-NATIVE-I/
 
 Lista de chequeo:
 
-- [ ] `curl https://TU-IP.sslip.io/api/products/public` responde JSON.
+- [ ] `curl https://TU-IP.sslip.io/api/public/products` responde JSON.
 - [ ] Home muestra productos y categorías desde el navegador (sin errores mixed content).
 - [ ] Login redirige a Microsoft y vuelve al sitio.
 - [ ] `/CLOUD-NATIVE-I/admin` accesible con usuario `admin`, login funciona al refrescar la página.

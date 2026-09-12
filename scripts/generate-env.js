@@ -55,10 +55,13 @@ const envDev = `// Archivo GENERADO por scripts/generate-env.js.
 export const environment = {
   production: false,
 
+  apiGatewayUrl: 'http://localhost:8000',
   productsUrl: 'http://localhost:8081/api/products',
   categoriesUrl: 'http://localhost:8082/api/categories',
-  usersUrl: 'http://localhost:${env.USERS_SERVICE_PORT || 8080}/api/users',
+  usersUrl: 'http://localhost:${env.USERS_SERVICE_PORT || 8083}/api/users',
   ordersUrl: 'http://localhost:8084/api/orders',
+  productsPublicUrl: 'http://localhost:8081/api/public/products',
+  categoriesPublicUrl: 'http://localhost:8082/api/public/categories',
 
   enableAuth: true,
 
@@ -96,7 +99,7 @@ if (!env.PROD_BACKEND_URL || !env.PROD_REDIRECT_URI) {
 // --- Escribe environment.prod.ts (produccion) ---
 const envProd = `// Archivo GENERADO por scripts/generate-env.js.
 // NO editar a mano - los valores provienen de .env en la raiz.
-// CONFIGURACION DE PRODUCCION (GitHub Pages + backend HTTPS).
+// CONFIGURACION DE PRODUCCION (GitHub Pages + API Gateway).
 export const environment = {
   production: true,
 
@@ -105,6 +108,8 @@ export const environment = {
   categoriesUrl: '${prodBackend}/api/categories',
   usersUrl: '${prodBackend}/api/users',
   ordersUrl: '${prodBackend}/api/orders',
+  productsPublicUrl: '${prodBackend}/api/public/products',
+  categoriesPublicUrl: '${prodBackend}/api/public/categories',
 
   enableAuth: true,
 

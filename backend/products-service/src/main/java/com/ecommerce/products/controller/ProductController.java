@@ -11,7 +11,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
-@CrossOrigin(origins = "*")
 public class ProductController {
     
     @Autowired
@@ -32,6 +31,24 @@ public class ProductController {
     
     @GetMapping("/public/category/{category}")
     public ResponseEntity<List<Product>> getProductsByCategoryPublic(@PathVariable String category) {
+        return ResponseEntity.ok(productService.getProductsByCategory(category));
+    }
+    
+    // Alias publicos para el API Gateway (separan claramente ruta publica de la privada)
+    @GetMapping("/api/public/products")
+    public ResponseEntity<List<Product>> getAllProductsPublicAlias() {
+        return ResponseEntity.ok(productService.getAllProducts());
+    }
+    
+    @GetMapping("/api/public/products/{id}")
+    public ResponseEntity<Product> getProductByIdPublicAlias(@PathVariable Long id) {
+        return productService.getProductById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @GetMapping("/api/public/products/category/{category}")
+    public ResponseEntity<List<Product>> getProductsByCategoryPublicAlias(@PathVariable String category) {
         return ResponseEntity.ok(productService.getProductsByCategory(category));
     }
     

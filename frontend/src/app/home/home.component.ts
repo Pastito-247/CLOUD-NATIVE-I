@@ -19,11 +19,11 @@ export class HomeComponent implements OnInit {
   }
 
   loadPublicData(): void {
-    // Consumir APIs públicas (no requieren autenticación)
-    const productsUrl = `${environment.productsUrl}/public`;
-    const categoriesUrl = `${environment.categoriesUrl}/public`;
+    // Consumir APIs públicas (no requieren autenticación ni token)
+    const productsPublicUrl = environment.productsPublicUrl;
+    const categoriesPublicUrl = environment.categoriesPublicUrl;
 
-    this.http.get<any[]>(productsUrl).subscribe(
+    this.http.get<any[]>(productsPublicUrl).subscribe(
       (data) => {
         this.products = data;
         this.loading = false;
@@ -34,7 +34,7 @@ export class HomeComponent implements OnInit {
       }
     );
 
-    this.http.get<any[]>(categoriesUrl).subscribe(
+    this.http.get<any[]>(categoriesPublicUrl).subscribe(
       (data) => {
         this.categories = data;
       },

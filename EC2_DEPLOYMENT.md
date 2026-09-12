@@ -140,8 +140,9 @@ Conectado al EC2, crea los 4 unit files. Las `Environment=` **sobreescriben** lo
 aprovechamos para:
 
 - Forzar el puerto 8083 en users-service (su `server.port=` está vacío en el repo).
-- Re-fijar el `jwk-set-uri` (users-service lo borra con una asignación vacía al final del properties).
-- Pasar los tenant/issuer correctos a los 4 servicios.
+- Fijar la `audience` (`api://tuki-tech-api`): el access token de Entra AD debe traer
+  ese valor en el claim `aud`, o el servicio responde `401 invalid_token`.
+- Pasar el `issuer` correcto a los 4 servicios (same tenant de Azure AD).
 
 ### 1) products-service
 
@@ -158,8 +159,8 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu/apps
 Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
-Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/discovery/v2.0/keys
-Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
+Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/products-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -184,8 +185,8 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu/apps
 Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
-Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/discovery/v2.0/keys
-Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
+Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/categories-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -195,7 +196,7 @@ WantedBy=multi-user.target
 EOF
 ```
 
-### 3) users-service (con SERVER_PORT=8083 y jwk-set-uri forzado)
+### 3) users-service (con SERVER_PORT=8083 y audience forzada)
 
 ```bash
 sudo tee /etc/systemd/system/tuki-users.service > /dev/null <<'EOF'
@@ -211,8 +212,8 @@ WorkingDirectory=/home/ubuntu/apps
 Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SERVER_PORT=8083
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
-Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/discovery/v2.0/keys
-Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
+Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/users-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -237,8 +238,8 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu/apps
 Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
-Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/discovery/v2.0/keys
-Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
+Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/orders-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -274,8 +275,8 @@ Deberías ver `java` escuchando en 8081, 8082, 8083 y 8084.
 Desde tu PC (PowerShell):
 
 ```powershell
-curl http://IP_EC2:8081/api/products/public
-curl http://IP_EC2:8082/api/categories/public
+curl http://IP_EC2:8081/api/public/products
+curl http://IP_EC2:8082/api/public/categories
 ```
 
 Respuesta esperada: un JSON `[]` (sin datos aún) o `{"products": []}`/`{"categories": []}`
@@ -339,17 +340,15 @@ sudo systemctl stop tuki-products tuki-categories tuki-users tuki-orders
   Al reiniciar la instancia o el servicio, los datos se pierden. Para persistir en
   producción deberías migrar a RDS MySQL (ver README) o cambiar el properties.
 
-- **users-service**: su `application.properties` tiene `server.port=` vacío y
-  sobreescribe `jwk-set-uri` con una cadena vacía. La Fase 5 lo corrige con
-  variables de entorno (que tienen prioridad en Spring Boot). Si prefieres
-  arreglarlo en el código, edita ese archivo: `server.port=8083` y borra las
-  líneas 34-38 (las asignaciones vacías del final).
+- **users-service**: ya quedó arreglado en el repo (`server.port=8083`, issuer y
+  audience en `application.properties`). La Fase 5 fuerza además el puerto y la
+  audience por variables de entorno como respaldo.
 
-- **CORS**: si más adelante publicas el frontend en GitHub Pages, agrega tu URL
-  en `CORS_ALLOWED_ORIGINS` de los 4 units (separadas por coma) y
-  `systemctl restart` cada servicio. Recuerda también el `@CrossOrigin("*")`
-  que hay en los controllers (esto lo cubre, pero por buenas prácticas deberías
-  restringirlo).
+- **CORS**: si publicas el frontend en GitHub Pages, agrega tu URL
+  (ej: `https://pastito-247.github.io`) en `CORS_ALLOWED_ORIGINS` de los 4 units
+  (separada por coma) y `systemctl restart` cada servicio. Ya se quitaron los
+  `@CrossOrigin("*")` de los controllers: todo el CORS sale del `SecurityConfig`
+  (`cors.allowed-origins` / `CORS_ALLOWED_ORIGINS`).
 
 - **Costos**: `t3.micro` no entra en free tier (≈ US$0.0095/hora). `t2.micro`
   sí es free tier (12 meses), pero usa menos RAM.
