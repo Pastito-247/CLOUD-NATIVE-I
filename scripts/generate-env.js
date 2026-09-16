@@ -50,18 +50,23 @@ if (hasPlaceholders(env)) {
 }
 
 // --- Escribe environment.ts (desarrollo) ---
+// Si DEV_BACKEND_URL está definida en .env, el entorno de desarrollo apunta a esa
+// API (útil para probar contra EC2 / API Gateway sin levantar backends locales).
+// Por defecto se mantiene localhost con los puertos de cada servicio.
+const devBackend = (env.DEV_BACKEND_URL || '').trim();
+
 const envDev = `// Archivo GENERADO por scripts/generate-env.js.
 // NO editar a mano - los valores provienen de .env en la raiz.
 export const environment = {
   production: false,
 
-  apiGatewayUrl: 'http://localhost:8000',
-  productsUrl: 'http://localhost:8081/api/products',
-  categoriesUrl: 'http://localhost:8082/api/categories',
-  usersUrl: 'http://localhost:${env.USERS_SERVICE_PORT || 8083}/api/users',
-  ordersUrl: 'http://localhost:8084/api/orders',
-  productsPublicUrl: 'http://localhost:8081/api/public/products',
-  categoriesPublicUrl: 'http://localhost:8082/api/public/categories',
+  apiGatewayUrl: '${devBackend || 'http://localhost:8000'}',
+  productsUrl: '${devBackend || 'http://localhost:8081'}/api/products',
+  categoriesUrl: '${devBackend || 'http://localhost:8082'}/api/categories',
+  usersUrl: '${devBackend || 'http://localhost:' + (env.USERS_SERVICE_PORT || 8083)}/api/users',
+  ordersUrl: '${devBackend || 'http://localhost:8084'}/api/orders',
+  productsPublicUrl: '${devBackend || 'http://localhost:8081'}/api/public/products',
+  categoriesPublicUrl: '${devBackend || 'http://localhost:8082'}/api/public/categories',
 
   enableAuth: true,
 

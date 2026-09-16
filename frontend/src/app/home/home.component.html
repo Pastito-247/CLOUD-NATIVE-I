@@ -1,52 +1,264 @@
-<div class="home-container">
-  <h2>Catálogo de Productos</h2>
+<!-- ========================================================= -->
+<!-- HERO -->
+<!-- ========================================================= -->
 
-  <div *ngIf="loading" class="loading">
-    Cargando productos...
+<section class="hero">
+  <div class="hero-content">
+    <svg class="hero-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M12 40 C 4 44, 2 32, 10 27" stroke="#4ade80" stroke-width="5" stroke-linecap="round"/>
+      <path d="M10 27 C 14 25, 18 21, 24 17 C 30 13, 39 13, 45 17" stroke="#22c55e" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="49" cy="18" r="6.5" fill="#22c55e"/>
+      <circle cx="51" cy="16" r="1.8" fill="#14532d"/>
+      <path d="M41 15 C 41 9, 45 7, 49 9" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M37 19 C 37 25, 41 28, 45 26" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M24 17 C 24 11, 28 9, 32 11" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M20 23 C 20 29, 24 31, 28 29" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+    </svg>
+    <h1>Bienvenido a Tuki-Tech</h1>
+    <p>Los mejores productos de tecnología, con la velocidad de una lagartija. ⚡🦎</p>
+    <div class="hero-stats">
+      <span class="hero-stat"><strong>{{ products.length }}</strong> productos</span>
+      <span class="hero-stat"><strong>{{ categories.length }}</strong> categorías</span>
+    </div>
+  </div>
+</section>
+
+<div class="home-container">
+
+  <!-- ========================================================= -->
+  <!-- BÚSQUEDA + ORDEN + FILTROS -->
+  <!-- ========================================================= -->
+
+  <div class="toolbar">
+
+    <div class="search-box">
+      <span class="search-icon" aria-hidden="true">🔍</span>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        placeholder="Buscar productos por nombre o descripción..."
+        class="search-input"
+        aria-label="Buscar productos">
+      <button
+        *ngIf="searchTerm"
+        class="search-clear"
+        (click)="searchTerm = ''"
+        aria-label="Limpiar búsqueda">×</button>
+    </div>
+
+    <select
+      [(ngModel)]="sortBy"
+      class="sort-select"
+      aria-label="Ordenar productos">
+      <option value="name">Nombre A-Z</option>
+      <option value="priceAsc">Precio: menor a mayor</option>
+      <option value="priceDesc">Precio: mayor a menor</option>
+    </select>
+
   </div>
 
-  <div *ngIf="!loading" class="products-grid">
+  <div class="category-pills" *ngIf="categories.length > 0">
 
-    <div *ngFor="let product of products" class="product-card">
+    <button
+      class="pill"
+      [class.active]="selectedCategory === ''"
+      (click)="selectCategory('')">
+      Todos
+    </button>
 
-      <!-- Imagen del producto -->
+    <button
+      class="pill"
+      *ngFor="let category of categories"
+      [class.active]="selectedCategory === category.name"
+      (click)="selectCategory(category.name)">
+      {{ category.name }}
+    </button>
+
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- ERROR -->
+  <!-- ========================================================= -->
+
+  <div *ngIf="error" class="error-box">
+    <p>{{ error }}</p>
+    <button class="btn-primary" (click)="loadPublicData()">Reintentar</button>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- CARGA (skeletons) -->
+  <!-- ========================================================= -->
+
+  <div *ngIf="loading" class="products-grid">
+
+    <div class="skeleton-card" *ngFor="let _ of [1,2,3,4,5,6]">
+      <div class="skeleton-image"></div>
+      <div class="skeleton-line" style="width: 60%;"></div>
+      <div class="skeleton-line" style="width: 35%;"></div>
+      <div class="skeleton-line" style="width: 80%;"></div>
+    </div>
+
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- SIN RESULTADOS -->
+  <!-- ========================================================= -->
+
+  <div *ngIf="!loading && !error && filteredProducts.length === 0" class="empty-state">
+    <span class="empty-state-icon">🦎</span>
+    <h3>No encontramos productos</h3>
+    <p>Prueba con otros términos de búsqueda o categorías.</p>
+    <button class="btn-secondary" (click)="clearFilters()">Limpiar filtros</button>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- GRID DE PRODUCTOS -->
+  <!-- ========================================================= -->
+
+  <div *ngIf="!loading && !error && filteredProducts.length > 0" class="products-grid">
+
+    <div
+      *ngFor="let product of filteredProducts"
+      class="product-card"
+      (click)="openDetail(product)">
+
       <div class="product-image-container">
-
         <img
           *ngIf="product.imageUrl"
           [src]="product.imageUrl"
           [alt]="product.name"
           class="product-image"
-        >
+          loading="lazy">
 
-        <div
-          *ngIf="!product.imageUrl"
-          class="no-image">
-          Sin imagen
+        <div *ngIf="!product.imageUrl" class="no-image">
+          <svg class="no-image-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 40 C 4 44, 2 32, 10 27" stroke="#86efac" stroke-width="5" stroke-linecap="round"/>
+            <path d="M10 27 C 14 25, 18 21, 24 17 C 30 13, 39 13, 45 17" stroke="#bbf7d0" stroke-width="7" stroke-linecap="round"/>
+            <circle cx="49" cy="18" r="6.5" fill="#bbf7d0"/>
+            <circle cx="51" cy="16" r="1.8" fill="#166534"/>
+          </svg>
+          <span>Sin imagen</span>
         </div>
 
+        <span
+          class="stock-badge"
+          [class.out]="!hasStock(product)">
+          {{ hasStock(product) ? '● En stock' : '● Agotado' }}
+        </span>
       </div>
 
-      <!-- Información -->
       <div class="product-info">
-
-        <h3>{{ product.name }}</h3>
-
-        <p class="price">
-          ${{ product.price }}
-        </p>
-
-        <p class="description">
-          {{ product.description }}
-        </p>
 
         <span class="category">
           {{ product.category }}
         </span>
+
+        <h3 class="product-name" title="{{ product.name }}">{{ product.name }}</h3>
+
+        <p class="price">{{ product.price | currency }}</p>
+
+        <p class="description">{{ product.description }}</p>
+
+        <div class="card-actions">
+          <button
+            class="btn-primary card-add"
+            (click)="$event.stopPropagation(); addToCart(product)">
+            Agregar
+          </button>
+          <button
+            class="btn-secondary card-detail"
+            (click)="$event.stopPropagation(); openDetail(product)">
+            Ver detalles
+          </button>
+        </div>
 
       </div>
 
     </div>
 
   </div>
+
+</div>
+
+<!-- ========================================================= -->
+<!-- MODAL DE DETALLE -->
+<!-- ========================================================= -->
+
+<div
+  class="modal-overlay"
+  *ngIf="selectedProduct"
+  (click)="closeDetail()">
+
+  <div class="modal-card" (click)="$event.stopPropagation()">
+
+    <button class="modal-close" (click)="closeDetail()" aria-label="Cerrar">×</button>
+
+    <div class="modal-image-container">
+      <img
+        *ngIf="selectedProduct.imageUrl"
+        [src]="selectedProduct.imageUrl"
+        [alt]="selectedProduct.name"
+        class="modal-image">
+      <div *ngIf="!selectedProduct.imageUrl" class="no-image modal-noimage">
+        Sin imagen
+      </div>
+    </div>
+
+    <div class="modal-body">
+
+      <span class="category">{{ selectedProduct.category }}</span>
+
+      <h2 class="modal-title">{{ selectedProduct.name }}</h2>
+
+      <p class="modal-price">{{ selectedProduct.price | currency }}</p>
+
+      <p class="modal-description">
+        {{ selectedProduct.description || 'Sin descripción disponible.' }}
+      </p>
+
+      <div class="modal-meta">
+        <span
+          class="stock-badge big"
+          [class.out]="!hasStock(selectedProduct)">
+          {{ hasStock(selectedProduct)
+            ? 'En stock (' + selectedProduct.stockQuantity + ' disponibles)'
+            : 'Agotado' }}
+        </span>
+      </div>
+
+      <div class="modal-actions">
+
+        <div class="modal-qty" *ngIf="hasStock(selectedProduct)">
+          <button (click)="decreaseDetailQty()">−</button>
+          <span class="qty-value">{{ detailQuantity }}</span>
+          <button
+            (click)="increaseDetailQty()"
+            [disabled]="atDetailMax()"
+            title="{{ atDetailMax() ? 'Stock máximo disponible' : 'Aumentar' }}">
+            +
+          </button>
+        </div>
+
+        <button
+          class="btn-primary"
+          [disabled]="!hasStock(selectedProduct)"
+          (click)="addToCart(selectedProduct, detailQuantity)">
+          {{ hasStock(selectedProduct) ? 'Agregar al carrito' : 'Sin stock' }}
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ========================================================= -->
+<!-- TOAST -->
+<!-- ========================================================= -->
+
+<div class="toast" *ngIf="toastVisible">
+  <span class="toast-icon">✓</span>
+  {{ toastMessage }}
 </div>

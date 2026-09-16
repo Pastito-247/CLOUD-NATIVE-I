@@ -1,6 +1,49 @@
 <div class="admin-container">
 
-  <h2>Panel de Administración</h2>
+  <div class="admin-header">
+    <div>
+      <h2>Panel de Administración</h2>
+      <p class="admin-subtitle">Gestiona los productos, categorías, usuarios y órdenes de Tuki-Tech.</p>
+    </div>
+    <span class="admin-badge">🦎 Modo administrador</span>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+
+    <div class="stat-card">
+      <span class="stat-icon stat-icon-products">📦</span>
+      <div>
+        <p class="stat-value">{{ totalProductCount }}</p>
+        <p class="stat-label">Productos</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-icon stat-icon-categories">🏷️</span>
+      <div>
+        <p class="stat-value">{{ totalCategoryCount }}</p>
+        <p class="stat-label">Categorías</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-icon stat-icon-users">👥</span>
+      <div>
+        <p class="stat-value">{{ totalUserCount }}</p>
+        <p class="stat-label">Usuarios</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-icon stat-icon-orders">🧾</span>
+      <div>
+        <p class="stat-value">{{ totalOrderCount }}</p>
+        <p class="stat-label">Órdenes</p>
+      </div>
+    </div>
+
+  </div>
 
   <!-- TABS -->
   <div class="tabs">
@@ -23,31 +66,20 @@
       Usuarios
     </button>
 
+    <button
+      (click)="setActiveTab('orders')"
+      [class.active]="activeTab === 'orders'">
+      Órdenes
+    </button>
+
   </div>
 
   <!-- MENSAJES -->
-
-  <div
-    *ngIf="successMessage"
-    style="
-      padding: 10px;
-      margin: 10px 0;
-      background: #dcfce7;
-      color: #166534;
-      border-radius: 6px;
-    ">
+  <div class="message success" *ngIf="successMessage">
     {{ successMessage }}
   </div>
 
-  <div
-    *ngIf="errorMessage"
-    style="
-      padding: 10px;
-      margin: 10px 0;
-      background: #fee2e2;
-      color: #991b1b;
-      border-radius: 6px;
-    ">
+  <div class="message error" *ngIf="errorMessage">
     {{ errorMessage }}
   </div>
 
@@ -69,7 +101,7 @@
       <button
         class="btn-primary"
         (click)="createProduct()">
-        Nuevo Producto
+        + Nuevo Producto
       </button>
 
     </div>
@@ -77,55 +109,24 @@
 
     <!-- FORMULARIO PRODUCTO -->
 
-    <div
-      *ngIf="showProductForm"
-      style="
-        margin: 20px 0;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-      ">
+    <div *ngIf="showProductForm" class="form-card">
 
       <h3>
-        {{ editingProduct ? 'Editar Producto' : 'Nuevo Producto' }}
+        {{ editingProduct ? '✏️ Editar Producto' : '➕ Nuevo Producto' }}
       </h3>
 
-      <div
-        style="
-          display: grid;
-          gap: 12px;
-          max-width: 600px;
-        ">
-
-        <!-- NOMBRE -->
+      <div class="form-grid">
 
         <label>
           Nombre
-
           <input
             type="text"
             [(ngModel)]="productForm.name"
             placeholder="Nombre del producto">
         </label>
 
-
-        <!-- DESCRIPCIÓN -->
-
-        <label>
-          Descripción
-
-          <textarea
-            [(ngModel)]="productForm.description"
-            placeholder="Descripción del producto">
-          </textarea>
-        </label>
-
-
-        <!-- PRECIO -->
-
         <label>
           Precio
-
           <input
             type="number"
             [(ngModel)]="productForm.price"
@@ -133,12 +134,8 @@
             step="0.01">
         </label>
 
-
-        <!-- CATEGORÍA -->
-
         <label>
           Categoría
-
           <select
             [(ngModel)]="productForm.category">
 
@@ -155,42 +152,34 @@
             </option>
 
           </select>
-
         </label>
-
-
-        <!-- STOCK -->
 
         <label>
           Stock
-
           <input
             type="number"
             [(ngModel)]="productForm.stockQuantity"
             min="0">
         </label>
 
+        <label class="span-2">
+          Descripción
+          <textarea
+            [(ngModel)]="productForm.description"
+            placeholder="Descripción del producto"
+            rows="3">
+          </textarea>
+        </label>
 
-        <!-- IMAGEN -->
-
-        <label>
+        <label class="span-2">
           URL de imagen
-
           <input
             type="text"
             [(ngModel)]="productForm.imageUrl"
             placeholder="https://...">
         </label>
 
-
-        <!-- BOTONES -->
-
-        <div
-          style="
-            display: flex;
-            gap: 10px;
-          ">
-
+        <div class="form-actions">
           <button
             class="btn-primary"
             (click)="saveProduct()">
@@ -208,7 +197,6 @@
             Cancelar
 
           </button>
-
         </div>
 
       </div>
@@ -218,65 +206,67 @@
 
     <!-- TABLA PRODUCTOS -->
 
-    <table class="data-table">
+    <div class="table-wrapper">
 
-      <thead>
+      <table class="data-table">
 
-        <tr>
-          <th>ID</th>
-          <th>Nombre</th>
-          <th>Precio</th>
-          <th>Categoría</th>
-          <th>Stock</th>
-          <th>Acciones</th>
-        </tr>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Precio</th>
+            <th>Categoría</th>
+            <th>Stock</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
 
-      </thead>
+        <tbody>
+          <tr *ngFor="let product of products">
 
-      <tbody>
+            <td>{{ product.id }}</td>
+            <td>
+              <span class="cell-name">{{ product.name }}</span>
+            </td>
+            <td class="cell-price">{{ product.price | currency }}</td>
+            <td>
+              <span class="cell-tag">{{ product.category }}</span>
+            </td>
+            <td>
+              <span
+                class="cell-stock"
+                [class.low]="product.stockQuantity <= 5 && product.stockQuantity > 0"
+                [class.out]="product.stockQuantity <= 0">
+                {{ product.stockQuantity }}
+              </span>
+            </td>
+            <td>
+              <div class="cell-actions">
+                <button
+                  class="btn-secondary"
+                  (click)="updateProduct(product)">
+                  Editar
+                </button>
+                <button
+                  class="btn-danger"
+                  (click)="deleteProduct(product.id)">
+                  Eliminar
+                </button>
+              </div>
+            </td>
 
-        <tr *ngFor="let product of products">
+          </tr>
 
-          <td>{{ product.id }}</td>
+          <tr *ngIf="products.length === 0">
+            <td colspan="6" class="empty-row">
+              No hay productos registrados.
+            </td>
+          </tr>
+        </tbody>
 
-          <td>{{ product.name }}</td>
+      </table>
 
-          <td>{{ product.price | currency }}</td>
-
-          <td>{{ product.category }}</td>
-
-          <td>{{ product.stockQuantity }}</td>
-
-          <td>
-
-            <button
-              class="btn-secondary"
-              (click)="updateProduct(product)">
-              Editar
-            </button>
-
-            <button
-              class="btn-danger"
-              (click)="deleteProduct(product.id)">
-              Eliminar
-            </button>
-
-          </td>
-
-        </tr>
-
-
-        <tr *ngIf="products.length === 0">
-
-          <td colspan="6">
-            No hay productos registrados.
-          </td>
-
-        </tr>
-
-      </tbody>
-
-    </table>
+    </div>
 
   </div>
 
@@ -295,7 +285,7 @@
         class="btn-primary"
         (click)="createCategory()">
 
-        Nueva Categoría
+        + Nueva Categoría
 
       </button>
 
@@ -304,61 +294,33 @@
 
     <!-- FORMULARIO CATEGORÍA -->
 
-    <div
-      *ngIf="showCategoryForm"
-      style="
-        margin: 20px 0;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        max-width: 600px;
-      ">
+    <div *ngIf="showCategoryForm" class="form-card">
 
       <h3>
         {{ editingCategory
-          ? 'Editar Categoría'
-          : 'Nueva Categoría' }}
+          ? '✏️ Editar Categoría'
+          : '➕ Nueva Categoría' }}
       </h3>
 
-
-      <div
-        style="
-          display: grid;
-          gap: 12px;
-        ">
-
-        <!-- NOMBRE -->
+      <div class="form-grid">
 
         <label>
           Nombre
-
           <input
             type="text"
             [(ngModel)]="categoryForm.name"
             placeholder="Ej: Computadores">
         </label>
 
-
-        <!-- DESCRIPCIÓN -->
-
         <label>
           Descripción
-
-          <textarea
+          <input
+            type="text"
             [(ngModel)]="categoryForm.description"
             placeholder="Descripción de la categoría">
-          </textarea>
         </label>
 
-
-        <!-- BOTONES -->
-
-        <div
-          style="
-            display: flex;
-            gap: 10px;
-          ">
-
+        <div class="form-actions">
           <button
             class="btn-primary"
             (click)="saveCategory()">
@@ -376,7 +338,6 @@
             Cancelar
 
           </button>
-
         </div>
 
       </div>
@@ -386,63 +347,58 @@
 
     <!-- TABLA CATEGORÍAS -->
 
-    <table class="data-table">
+    <div class="table-wrapper">
 
-      <thead>
+      <table class="data-table">
 
-        <tr>
-          <th>ID</th>
-          <th>Nombre</th>
-          <th>Descripción</th>
-          <th>Acciones</th>
-        </tr>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
 
-      </thead>
+        <tbody>
+          <tr *ngFor="let category of categories">
 
-      <tbody>
+            <td>{{ category.id }}</td>
+            <td>
+              <span class="cell-name">{{ category.name }}</span>
+            </td>
+            <td>{{ category.description }}</td>
+            <td>
+              <div class="cell-actions">
+                <button
+                  class="btn-secondary"
+                  (click)="updateCategory(category)">
 
-        <tr *ngFor="let category of categories">
+                  Editar
 
-          <td>{{ category.id }}</td>
+                </button>
+                <button
+                  class="btn-danger"
+                  (click)="deleteCategory(category.id)">
 
-          <td>{{ category.name }}</td>
+                  Eliminar
 
-          <td>{{ category.description }}</td>
+                </button>
+              </div>
+            </td>
 
-          <td>
+          </tr>
 
-            <button
-              class="btn-secondary"
-              (click)="updateCategory(category)">
+          <tr *ngIf="categories.length === 0">
+            <td colspan="4" class="empty-row">
+              No hay categorías registradas.
+            </td>
+          </tr>
+        </tbody>
 
-              Editar
+      </table>
 
-            </button>
-
-            <button
-              class="btn-danger"
-              (click)="deleteCategory(category.id)">
-
-              Eliminar
-
-            </button>
-
-          </td>
-
-        </tr>
-
-
-        <tr *ngIf="categories.length === 0">
-
-          <td colspan="4">
-            No hay categorías registradas.
-          </td>
-
-        </tr>
-
-      </tbody>
-
-    </table>
+    </div>
 
   </div>
 
@@ -457,56 +413,195 @@
 
     <div
       *ngIf="userRoles.length > 0"
-      style="
-        margin-bottom: 8px;
-        color: #60a5fa;
-        font-weight: 600;
-      ">
+      class="roles-banner">
 
-      Roles del usuario:
-      {{ userRoles.join(', ') }}
+      Tus roles:
+      <span
+        class="role-chip"
+        *ngFor="let role of userRoles">
+        {{ role }}
+      </span>
 
     </div>
 
+    <div class="table-wrapper">
 
-    <table class="data-table">
+      <table class="data-table">
 
-      <thead>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Email</th>
+            <th>Nombre</th>
+            <th>Rol</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
 
-        <tr>
-          <th>ID</th>
-          <th>Email</th>
-          <th>Rol</th>
-          <th>Acciones</th>
-        </tr>
+        <tbody>
+          <tr *ngFor="let user of users">
 
-      </thead>
+            <td>{{ user.id }}</td>
+            <td class="cell-email">{{ user.email }}</td>
+            <td>{{ user.name }}</td>
 
-      <tbody>
+            <td>
+              <!-- Edición de rol inline -->
+              <div
+                *ngIf="isEditingUser(user)"
+                class="user-role-editor">
 
-        <tr *ngFor="let user of users">
+                <select
+                  [(ngModel)]="userRoleForm.role"
+                  class="role-select">
+                  <option value="admin">admin</option>
+                  <option value="user">user</option>
+                  <option value="seller">seller</option>
+                </select>
 
-          <td>{{ user.id }}</td>
+              </div>
 
-          <td>{{ user.email }}</td>
+              <span *ngIf="!isEditingUser(user)" class="cell-tag">
+                {{ user.role }}
+              </span>
+            </td>
 
-          <td>{{ user.role }}</td>
+            <td>
+              <!-- Modo edición -->
+              <div
+                *ngIf="isEditingUser(user)"
+                class="cell-actions">
 
-          <td>
+                <button
+                  class="btn-primary btn-small"
+                  [disabled]="savingUser"
+                  (click)="saveUserRole()">
 
-            <button class="btn-secondary">
-              Editar
-            </button>
+                  {{ savingUser ? 'Guardando...' : 'Guardar' }}
 
-          </td>
+                </button>
 
-        </tr>
+                <button
+                  class="btn-secondary btn-small"
+                  (click)="cancelEditUser()">
 
-      </tbody>
+                  Cancelar
 
-    </table>
+                </button>
+
+              </div>
+
+              <!-- Modo normal -->
+              <div *ngIf="!isEditingUser(user)" class="cell-actions">
+                <button
+                  class="btn-secondary"
+                  (click)="startEditUser(user)">
+                  Editar rol
+                </button>
+              </div>
+            </td>
+
+          </tr>
+
+          <tr *ngIf="users.length === 0">
+            <td colspan="5" class="empty-row">
+              No hay usuarios registrados.
+            </td>
+          </tr>
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+
+  <!-- ===================================================== -->
+  <!-- ÓRDENES -->
+  <!-- ===================================================== -->
+
+  <div
+    *ngIf="activeTab === 'orders' && !loading"
+    class="tab-content">
+
+    <div class="action-bar order-actions-bar">
+      <button
+        class="btn-secondary"
+        (click)="loadOrders()">
+        ⟳ Refrescar órdenes
+      </button>
+
+      <span *ngIf="ordersLoading" class="loading-inline">
+        Cargando órdenes...
+      </span>
+    </div>
+
+    <div class="table-wrapper">
+
+      <table class="data-table orders-table">
+
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Email</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Dirección</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let order of orders">
+
+            <td>#{{ order.id }}</td>
+            <td class="cell-email">{{ order.userEmail }}</td>
+            <td class="cell-price">{{ order.total | currency }}</td>
+            <td>
+              <select
+                [(ngModel)]="order.status"
+                class="status-select"
+                [class.status-pending]="order.status === 'PENDING'"
+                [class.status-confirmed]="order.status === 'CONFIRMED'"
+                [class.status-shipped]="order.status === 'SHIPPED'"
+                [class.status-delivered]="order.status === 'DELIVERED'"
+                [class.status-cancelled]="order.status === 'CANCELLED'">
+                <option value="PENDING">Pendiente</option>
+                <option value="CONFIRMED">Confirmada</option>
+                <option value="SHIPPED">Enviada</option>
+                <option value="DELIVERED">Entregada</option>
+                <option value="CANCELLED">Cancelada</option>
+              </select>
+            </td>
+            <td class="cell-address" title="{{ order.shippingAddress }}">
+              {{ order.shippingAddress || '—' }}
+            </td>
+            <td class="cell-date">{{ order.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td>
+              <div class="cell-actions">
+                <button
+                  class="btn-primary btn-small"
+                  (click)="saveOrderStatus(order)">
+                  Guardar
+                </button>
+              </div>
+            </td>
+
+          </tr>
+
+          <tr *ngIf="orders.length === 0 && !ordersLoading">
+            <td colspan="7" class="empty-row">
+              No hay órdenes registradas.
+            </td>
+          </tr>
+        </tbody>
+
+      </table>
+
+    </div>
 
   </div>
 
 </div>
-

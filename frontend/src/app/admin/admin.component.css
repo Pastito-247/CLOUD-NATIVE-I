@@ -4,34 +4,232 @@
   padding: 0 1rem;
 }
 
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-header h2 {
+  color: var(--green-800);
+  font-size: 1.7rem;
+  font-weight: 800;
+}
+
+.admin-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.admin-badge {
+  background: linear-gradient(135deg, var(--green-600), var(--green-500));
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* ========================================================= */
+/* STATS */
+/* ========================================================= */
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  border-left: 4px solid var(--green-500);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+}
+
+.stat-icon {
+  font-size: 1.7rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-icon-products { background: var(--green-100); }
+.stat-icon-categories { background: #fef3c7; }
+.stat-icon-users { background: #dbeafe; }
+.stat-icon-orders { background: #fce7f3; }
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ========================================================= */
+/* TABS */
+/* ========================================================= */
+
 .tabs {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--green-100);
+  padding-bottom: 0.75rem;
 }
 
 .tabs button {
-  padding: 0.75rem 1.5rem;
+  padding: 0.65rem 1.4rem;
   border: none;
-  background: #e0e0e0;
+  background: white;
+  color: var(--green-800);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  border: 1px solid var(--border);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.tabs button:hover {
+  background: var(--green-50);
 }
 
 .tabs button.active {
-  background: #007bff;
+  background: var(--green-600);
+  border-color: var(--green-600);
   color: white;
 }
+
+/* ========================================================= */
+/* MENSAJES */
+/* ========================================================= */
+
+.message {
+  padding: 0.75rem 1rem;
+  margin: 0 0 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.message.success {
+  background: var(--green-100);
+  color: var(--green-800);
+  border-left: 4px solid var(--green-500);
+}
+
+.message.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border-left: 4px solid #f87171;
+}
+
+/* ========================================================= */
+/* TAB CONTENT */
+/* ========================================================= */
 
 .tab-content {
   background: white;
   padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--green-50);
 }
 
 .action-bar {
   margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 2.5rem;
+  color: var(--green-800);
+  font-weight: 600;
+}
+
+.loading-inline {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ========================================================= */
+/* FORMULARIO */
+/* ========================================================= */
+
+.form-card {
+  margin: 1.25rem 0;
+  padding: 1.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--green-50);
+  animation: fadeIn 0.2s ease;
+}
+
+.form-card h3 {
+  color: var(--green-800);
+  margin-bottom: 1rem;
+  font-size: 1.15rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
+.form-actions {
+  grid-column: span 2;
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* ========================================================= */
+/* TABLAS */
+/* ========================================================= */
+
+.table-wrapper {
+  overflow-x: auto;
 }
 
 .data-table {
@@ -41,46 +239,191 @@
 
 .data-table th,
 .data-table td {
-  padding: 0.75rem;
+  padding: 0.7rem 0.75rem;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e6f3ea;
+  vertical-align: middle;
 }
 
 .data-table th {
-  background: #f5f5f5;
+  background: var(--green-50);
+  color: var(--green-800);
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+}
+
+.data-table tbody tr {
+  transition: background-color 0.15s;
+}
+
+.data-table tbody tr:hover {
+  background: var(--green-50);
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 1.5rem !important;
+  font-style: italic;
+}
+
+.cell-name {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cell-price {
+  color: var(--green-700);
+  font-weight: 700;
+}
+
+.cell-email {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.cell-tag {
+  display: inline-block;
+  background: var(--green-100);
+  color: var(--green-800);
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
-.btn-primary {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-  border: none;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-right: 0.25rem;
-}
-
-.btn-danger {
-  background: #dc3545;
-  color: white;
-  border: none;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.loading {
+.cell-stock {
+  display: inline-block;
+  background: var(--green-100);
+  color: var(--green-800);
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  min-width: 36px;
   text-align: center;
-  padding: 2rem;
-  color: #666;
+}
+
+.cell-stock.low {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.cell-stock.out {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.cell-address {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.cell-date {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.cell-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.btn-small {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+/* ========================================================= */
+/* ROLES */
+/* ========================================================= */
+
+.roles-banner {
+  background: var(--green-50);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  color: var(--green-800);
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.role-chip {
+  background: var(--green-600);
+  color: white;
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.user-role-editor {
+  display: inline-flex;
+  align-items: center;
+}
+
+.role-select {
+  width: auto;
+  min-width: 110px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.88rem;
+  border-radius: 8px;
+}
+
+/* ========================================================= */
+/* STATUS DE ÓRDENES */
+/* ========================================================= */
+
+.status-select {
+  width: auto;
+  min-width: 130px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.status-select.status-pending { background: var(--green-100); color: var(--green-800); }
+.status-select.status-confirmed { background: #dbeafe; color: #1e40af; }
+.status-select.status-shipped { background: #fef3c7; color: #92400e; }
+.status-select.status-delivered { background: #dcfce7; color: #166534; }
+.status-select.status-cancelled { background: #fee2e2; color: #991b1b; }
+
+/* ========================================================= */
+/* RESPONSIVE */
+/* ========================================================= */
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2,
+  .form-actions {
+    grid-column: span 1;
+  }
+
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .orders-table {
+    min-width: 680px;
+  }
 }

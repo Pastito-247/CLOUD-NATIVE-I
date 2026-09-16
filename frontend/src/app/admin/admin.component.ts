@@ -13,9 +13,11 @@ export class AdminComponent implements OnInit {
   products: any[] = [];
   categories: any[] = [];
   users: any[] = [];
+  orders: any[] = [];
 
   activeTab = 'products';
   loading = false;
+  ordersLoading = false;
 
   userRoles: string[] = [];
   isAdmin = false;
@@ -44,8 +46,29 @@ export class AdminComponent implements OnInit {
     description: ''
   };
 
+  // USUARIOS
+  editingUser: any = null;
+  userRoleForm = { role: '' };
+  savingUser = false;
+
   errorMessage = '';
   successMessage = '';
+
+  get totalProductCount(): number {
+    return this.products.length;
+  }
+
+  get totalCategoryCount(): number {
+    return this.categories.length;
+  }
+
+  get totalUserCount(): number {
+    return this.users.length;
+  }
+
+  get totalOrderCount(): number {
+    return this.orders.length;
+  }
 
   constructor(
     private http: HttpClient,
@@ -105,6 +128,24 @@ export class AdminComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading users:', error);
+      }
+    });
+
+    // Órdenes
+    this.loadOrders();
+  }
+
+  loadOrders(): void {
+    this.ordersLoading = true;
+
+    this.http.get<any[]>(environment.ordersUrl).subscribe({
+      next: (data) => {
+        this.orders = data;
+        this.ordersLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading orders:', error);
+        this.ordersLoading = false;
       }
     });
   }
@@ -445,6 +486,119 @@ export class AdminComponent implements OnInit {
   cancelCategoryForm(): void {
     this.showCategoryForm = false;
     this.clearMessages();
+  }
+
+  // =========================================================
+  // USUARIOS
+  // =========================================================
+
+  startEditUser(user: any): void {
+    this.editingUser = user;
+    this.userRoleForm.role = user.role || 'user';
+    this.clearMessages();
+  }
+
+  cancelEditUser(): void {
+    this.editingUser = null;
+    this.userRoleForm.role = '';
+  }
+
+  saveUserRole(): void {
+    if (!this.editingUser || this.savingUser) {
+      return;
+    }
+
+    if (!this.userRoleForm.role) {
+      this.errorMessage = 'El rol es obligatorio.';
+      return;
+    }
+
+    this.clearMessages();
+    this.savingUser = true;
+
+    const payload = {
+      name: this.editingUser.name,
+      role: this.userRoleForm.role,
+      azureId: this.editingUser.azureId
+    };
+
+    this.http.put<any>(
+      `${environment.usersUrl}/${this.editingUser.id}`,
+      payload
+    ).subscribe({
+      next: (updatedUser) => {
+        const index = this.users.findIndex(
+          u => u.id === this.editingUser.id
+        );
+
+        if (index !== -1) {
+          this.users[index] = updatedUser;
+        }
+
+        const email = updatedUser.email || this.editingUser.email;
+        this.successMessage =
+          `Rol de ${email} actualizado a "${updatedUser.role}".`;
+
+        this.editingUser = null;
+        this.userRoleForm.role = '';
+        this.savingUser = false;
+      },
+      error: (error) => {
+        console.error('Error updating user:', error);
+        this.errorMessage = 'No se pudo actualizar el usuario.';
+        this.savingUser = false;
+      }
+    });
+  }
+
+  isEditingUser(user: any): boolean {
+    return this.editingUser !== null &&
+      this.editingUser.id === user.id;
+  }
+
+  // =========================================================
+  // ÓRDENES
+  // =========================================================
+
+  orderStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      PENDING: 'Pendiente',
+      CONFIRMED: 'Confirmada',
+      SHIPPED: 'Enviada',
+      DELIVERED: 'Entregada',
+      CANCELLED: 'Cancelada'
+    };
+
+    return labels[status] || status;
+  }
+
+  saveOrderStatus(order: any): void {
+    this.clearMessages();
+
+    this.http.put<any>(
+      `${environment.ordersUrl}/${order.id}`,
+      {
+        status: order.status,
+        shippingAddress: order.shippingAddress
+      }
+    ).subscribe({
+      next: (updatedOrder) => {
+        const index = this.orders.findIndex(
+          o => o.id === order.id
+        );
+
+        if (index !== -1) {
+          this.orders[index] = updatedOrder;
+        }
+
+        this.successMessage =
+          `Orden #${order.id} actualizada a "${this.orderStatusLabel(updatedOrder.status)}".`;
+      },
+      error: (error) => {
+        console.error('Error updating order:', error);
+        this.errorMessage = 'No se pudo actualizar la orden.';
+      }
+    });
   }
 
   // =========================================================

@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import {
   MsalBroadcastService,
   MsalService
@@ -15,6 +16,7 @@ import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
 
 import { environment } from '../environments/environment';
+import { CartItem, CartService } from './services/cart.service';
 
 @Component({
   selector: 'app-root',
@@ -30,11 +32,37 @@ export class AppComponent implements OnInit, OnDestroy {
   userEmail = '';
   isAdmin = false;
 
+  // Carrito
+  cartItems: CartItem[] = [];
+  cartCount = 0;
+  cartOpen = false;
+  shippingAddress = '';
+  cartMessage = '';
+  cartMessageIsError = false;
+  checkoutLoading = false;
+  menuOpen = false;
+  currentYear = new Date().getFullYear();
+
+  // Número en formato internacional (sin '+') para el enlace de WhatsApp.
+  // Ej: '573001234567'. CAMBIA aquí tu número real.
+  whatsappNumber = '573001234567';
+  whatsappMessage = 'Hola Tuki-Tech! Tengo una consulta';
+
+  get whatsappUrl(): string {
+    return `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(this.whatsappMessage)}`;
+  }
+
+  get cartEmpty(): boolean {
+    return this.cartItems.length === 0;
+  }
+
   private readonly destroying$ = new Subject<void>();
 
   constructor(
     private msalService: MsalService,
-    private msalBroadcastService: MsalBroadcastService
+    private msalBroadcastService: MsalBroadcastService,
+    private cartService: CartService,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -92,6 +120,17 @@ export class AppComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         this.checkLoginStatus();
       });
+
+    // Escuchar cambios del carrito
+    this.cartService.items$
+      .pipe(takeUntil(this.destroying$))
+      .subscribe((items) => {
+        this.cartItems = items;
+        this.cartCount = items.reduce(
+          (sum, item) => sum + item.quantity,
+          0
+        );
+      });
   }
 
   checkLoginStatus(): void {
@@ -143,6 +182,100 @@ export class AppComponent implements OnInit, OnDestroy {
 
   hasRole(role: string): boolean {
     return this.userRoles.includes(role);
+  }
+
+  // =========================================================
+  // CARRITO
+  // =========================================================
+
+  toggleCart(): void {
+    this.cartOpen = !this.cartOpen;
+    this.clearCartMessage();
+  }
+
+  closeCart(): void {
+    this.cartOpen = false;
+  }
+
+  increaseQty(item: CartItem): void {
+    if (this.atMaxStock(item)) {
+      return;
+    }
+
+    this.cartService.updateQuantity(
+      item.product.id,
+      item.quantity + 1
+    );
+  }
+
+  atMaxStock(item: CartItem): boolean {
+    const stock = Number(item.product.stockQuantity);
+
+    return Number.isFinite(stock) && item.quantity >= stock;
+  }
+
+  decreaseQty(item: CartItem): void {
+    if (item.quantity > 1) {
+      this.cartService.updateQuantity(
+        item.product.id,
+        item.quantity - 1
+      );
+    } else {
+      this.cartService.removeFromCart(item.product.id);
+    }
+  }
+
+  removeItem(item: CartItem): void {
+    this.cartService.removeFromCart(item.product.id);
+  }
+
+  getCartTotal(): number {
+    return this.cartService.getTotal();
+  }
+
+  checkout(): void {
+    this.clearCartMessage();
+
+    if (!this.isLoggedIn) {
+      this.login();
+      return;
+    }
+
+    if (!this.shippingAddress.trim()) {
+      this.cartMessage = 'Ingresa una dirección de envío.';
+      this.cartMessageIsError = true;
+      return;
+    }
+
+    this.checkoutLoading = true;
+
+    const order = {
+      userEmail: this.userEmail,
+      total: this.getCartTotal(),
+      shippingAddress: this.shippingAddress.trim(),
+      status: 'PENDING'
+    };
+
+    this.http.post(environment.ordersUrl, order).subscribe({
+      next: () => {
+        this.cartService.clearCart();
+        this.shippingAddress = '';
+        this.checkoutLoading = false;
+        this.cartMessage = '¡Compra realizada con éxito! Pronto la procesaremos.';
+        this.cartMessageIsError = false;
+      },
+      error: (error) => {
+        console.error('Error creating order:', error);
+        this.checkoutLoading = false;
+        this.cartMessage = 'No se pudo realizar la compra. Intenta de nuevo.';
+        this.cartMessageIsError = true;
+      }
+    });
+  }
+
+  private clearCartMessage(): void {
+    this.cartMessage = '';
+    this.cartMessageIsError = false;
   }
 
   ngOnDestroy(): void {

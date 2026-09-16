@@ -1,14 +1,218 @@
 <nav class="navbar">
   <div class="nav-container">
-    <h1>{{ title }}</h1>
-    <div class="nav-links">
-      <a routerLink="/">Home</a>
-      <a routerLink="/admin" *ngIf="isLoggedIn && isAdmin">Admin</a>
-      <span *ngIf="isLoggedIn && userEmail" style="margin-left:12px; font-weight:bold; color: #22c55e;">{{ userEmail }}</span>
-      <button *ngIf="!isLoggedIn" (click)="login()">Login</button>
-      <button *ngIf="isLoggedIn" (click)="logout()">Logout</button>
+
+    <a routerLink="/" class="brand" (click)="menuOpen = false">
+      <svg class="logo-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 40 C 4 44, 2 32, 10 27" stroke="#4ade80" stroke-width="5" stroke-linecap="round"/>
+        <path d="M10 27 C 14 25, 18 21, 24 17 C 30 13, 39 13, 45 17" stroke="#22c55e" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="49" cy="18" r="6.5" fill="#22c55e"/>
+        <circle cx="51" cy="16" r="1.8" fill="#14532d"/>
+        <path d="M41 15 C 41 9, 45 7, 49 9" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M37 19 C 37 25, 41 28, 45 26" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M24 17 C 24 11, 28 9, 32 11" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M20 23 C 20 29, 24 31, 28 29" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-name">Tuki-Tech</span>
+    </a>
+
+    <button
+      class="hamburger"
+      (click)="menuOpen = !menuOpen"
+      [class.open]="menuOpen"
+      aria-label="Menú">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <div class="nav-links" [class.open]="menuOpen">
+
+      <a
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="menuOpen = false">
+        Inicio
+      </a>
+
+      <a
+        *ngIf="isLoggedIn && isAdmin"
+        routerLink="/admin"
+        routerLinkActive="active"
+        (click)="menuOpen = false">
+        Admin
+      </a>
+
+      <a
+        *ngIf="isLoggedIn"
+        routerLink="/my-orders"
+        routerLinkActive="active"
+        (click)="menuOpen = false">
+        Mis compras
+      </a>
+
+      <span *ngIf="isLoggedIn && userEmail" class="user-email" title="{{ userEmail }}">
+        {{ userEmail }}
+      </span>
+
+      <button class="cart-button" (click)="toggleCart()">
+        <span class="cart-icon">🛒</span>
+        <span class="cart-label">Carrito</span>
+        <span class="cart-badge" *ngIf="cartCount > 0">{{ cartCount }}</span>
+      </button>
+
+      <button *ngIf="!isLoggedIn" class="nav-btn nav-login" (click)="login()">
+        Iniciar sesión
+      </button>
+
+      <button *ngIf="isLoggedIn" class="nav-btn nav-logout" (click)="logout()">
+        Cerrar sesión
+      </button>
+
     </div>
   </div>
 </nav>
 
+<!-- ========================================================= -->
+<!-- DRAWER DEL CARRITO -->
+<!-- ========================================================= -->
+
+<div
+  class="cart-overlay"
+  *ngIf="cartOpen"
+  (click)="closeCart()">
+</div>
+
+<aside class="cart-drawer" [class.open]="cartOpen">
+
+  <div class="cart-header">
+    <h3>Mi Carrito</h3>
+    <button class="cart-close" (click)="closeCart()" aria-label="Cerrar carrito">×</button>
+  </div>
+
+  <div
+    *ngIf="cartMessage"
+    class="cart-message"
+    [class.error]="cartMessageIsError">
+    {{ cartMessage }}
+  </div>
+
+  <!-- Carrito vacío -->
+  <div *ngIf="cartEmpty" class="cart-empty">
+    <svg class="logo-svg empty-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M12 40 C 4 44, 2 32, 10 27" stroke="#86efac" stroke-width="5" stroke-linecap="round"/>
+      <path d="M10 27 C 14 25, 18 21, 24 17 C 30 13, 39 13, 45 17" stroke="#bbf7d0" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="49" cy="18" r="6.5" fill="#bbf7d0"/>
+      <circle cx="51" cy="16" r="1.8" fill="#166534"/>
+    </svg>
+    <p class="cart-empty-title">Tu carrito está vacío</p>
+    <p class="cart-empty-subtitle">Explora el catálogo y agrega tus productos favoritos.</p>
+    <button class="btn-primary" (click)="closeCart()">Seguir comprando</button>
+  </div>
+
+  <!-- Carrito con items -->
+  <ng-container *ngIf="!cartEmpty">
+
+    <div class="cart-items">
+
+      <div class="cart-item" *ngFor="let item of cartItems">
+
+        <div class="cart-item-media">
+          <img
+            *ngIf="item.product.imageUrl"
+            [src]="item.product.imageUrl"
+            [alt]="item.product.name">
+          <span *ngIf="!item.product.imageUrl" class="cart-item-noimg">Sin imagen</span>
+        </div>
+
+        <div class="cart-item-info">
+          <p class="cart-item-name">{{ item.product.name }}</p>
+
+          <div class="qty-controls">
+            <button (click)="decreaseQty(item)">−</button>
+            <span class="qty-value">{{ item.quantity }}</span>
+            <button
+              (click)="increaseQty(item)"
+              [disabled]="atMaxStock(item)"
+              title="{{ atMaxStock(item) ? 'Stock máximo disponible' : 'Aumentar' }}">
+              +
+            </button>
+          </div>
+        </div>
+
+        <div class="cart-item-right">
+          <p class="cart-item-price">{{ item.product.price * item.quantity | currency }}</p>
+          <button class="cart-item-remove" (click)="removeItem(item)">Eliminar</button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="cart-footer">
+
+      <div class="cart-total">
+        <span>Total</span>
+        <span class="cart-total-amount">{{ getCartTotal() | currency }}</span>
+      </div>
+
+      <input
+        *ngIf="isLoggedIn"
+        class="shipping-input"
+        [(ngModel)]="shippingAddress"
+        placeholder="Dirección de envío">
+
+      <button
+        *ngIf="!isLoggedIn"
+        class="btn-primary checkout-btn"
+        (click)="checkout()">
+        Inicia sesión para comprar
+      </button>
+
+      <button
+        *ngIf="isLoggedIn"
+        class="btn-primary checkout-btn"
+        [disabled]="checkoutLoading || cartCount === 0"
+        (click)="checkout()">
+        {{ checkoutLoading ? 'Procesando...' : 'Finalizar compra' }}
+      </button>
+
+    </div>
+
+  </ng-container>
+
+</aside>
+
 <router-outlet></router-outlet>
+
+<!-- WhatsApp flotante -->
+<a
+  class="whatsapp-float"
+  href="{{ whatsappUrl }}"
+  target="_blank"
+  rel="noopener noreferrer"
+  aria-label="Escríbenos por WhatsApp">
+  <svg class="whatsapp-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </svg>
+  <span class="whatsapp-tooltip">¿Dudas? Escríbenos</span>
+</a>
+
+<footer class="footer">
+  <div class="footer-content">
+    <div class="footer-brand">
+      <svg class="logo-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 40 C 4 44, 2 32, 10 27" stroke="#4ade80" stroke-width="5" stroke-linecap="round"/>
+        <path d="M10 27 C 14 25, 18 21, 24 17 C 30 13, 39 13, 45 17" stroke="#22c55e" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="49" cy="18" r="6.5" fill="#22c55e"/>
+        <circle cx="51" cy="16" r="1.8" fill="#14532d"/>
+        <path d="M41 15 C 41 9, 45 7, 49 9" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M37 19 C 37 25, 41 28, 45 26" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M24 17 C 24 11, 28 9, 32 11" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M20 23 C 20 29, 24 31, 28 29" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+      </svg>
+      <span>Tuki-Tech</span>
+    </div>
+    <p class="footer-text">© {{ currentYear }} Tuki-Tech · Proyecto Cloud Native I · Hecho con 🦎</p>
+  </div>
+</footer>

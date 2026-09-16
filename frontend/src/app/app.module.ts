@@ -8,6 +8,7 @@ import { AppComponent } from './app.component';
 import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
 import { AdminComponent } from './admin/admin.component';
+import { MyOrdersComponent } from './my-orders/my-orders.component';
 
 import {
   MsalModule,
@@ -81,7 +82,8 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     AppComponent,
     HomeComponent,
     LoginComponent,
-    AdminComponent
+    AdminComponent,
+    MyOrdersComponent
   ],
 
   imports: [
