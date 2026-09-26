@@ -334,6 +334,38 @@ sudo systemctl stop tuki-products tuki-categories tuki-users tuki-orders
 
 ---
 
+## Auto-seed de datos demo
+
+`products-service` y `categories-service` se **siembran solos** al arrancar si la
+base (H2 in-memory `create-drop`) está vacía: crean 6 categorías y 19 productos de
+ejemplo. No necesitas correr `scripts/seed-data.js` ni tener un token admin para
+que el Home muestre el catálogo.
+
+> `scripts/seed-data.js` sigue disponible como alternativa manual.
+
+## Preparación rápida para una presentación/demo
+
+Asumiendo que los JARs ya se subieron (`~/apps/`):
+
+1. **EC2 → Start instance** (consola AWS), espera a que `2/2 checks passed`.
+2. **SSH** y arranca/verifica los 4 servicios:
+   ```bash
+   sudo systemctl start tuki-products tuki-categories tuki-users tuki-orders
+   sudo systemctl status tuki-products --no-pager -l | head -20
+   ss -tlnp | grep -E '808[1-4]'
+   ```
+   (la primera vez Spring toma 30-60s en arrancar)
+3. **API Gateway** (consola AWS): verifica que el stage `$default` esté **Deployed**
+   y apunte al EC2 (si apagaste la API, haz **Deploy** de nuevo).
+4. Desde tu PC:
+   ```powershell
+   curl https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/public/products
+   curl https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/products   # -> 401 sin token
+   ```
+5. Home `https://pastito-247.github.io/CLOUD-NATIVE-I` con productos cargados (sin login).
+
+---
+
 ## Notas importantes
 
 - **Datos en memoria**: todos los servicios usan **H2 in-memory** con `create-drop`.

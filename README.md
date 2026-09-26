@@ -266,6 +266,9 @@ curl http://localhost:8081/api/products/public
 curl http://localhost:8082/api/categories/public
 ```
 
+> products y categories se **auto-siembran** con datos demo al arrancar si la
+> base está vacía (6 categorías + 19 productos). No necesitas seed manual.
+
 ### 4. Probar APIs privadas (requiere token)
 ```bash
 # Primero obtén el access token desde el frontend
