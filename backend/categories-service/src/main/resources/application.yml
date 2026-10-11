@@ -1,0 +1,84 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: categories-service
+
+  # Database Configuration (H2 for local testing)
+  datasource:
+    url: jdbc:h2:mem:categories_db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  # Azure AD Configuration (JWT: issuer + audience)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
+          # Audiencia = claim 'aud' del access token de Entra (Application ID URI de la API).
+          # Debe coincidir con el valor del JWT authorizer del API Gateway y el frontend scope.
+          audiences: api://tuki-tech-api
+
+  # RabbitMQ (CloudAMQP / instancia existente). Overridable por variables de entorno.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    ssl:
+      enabled: ${RABBITMQ_SSL:false}
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
+        default-requeue-rejected: false
+
+# CORS Configuration
+cors:
+  allowed-origins: "http://localhost:4200,https://pastito-247.github.io"
+
+# ============================================================
+# Configuracion centralizada de mensajeria (RabbitMQ).
+# Unica fuente de verdad para nombres de exchanges, colas y
+# routing keys. Ningun nombre debe escribirse en el codigo de negocio.
+# ============================================================
+messaging:
+  exchange:
+    catalog: catalog.exchange
+    dead-letter: catalog.dlx
+  queue:
+    category-sync: category.sync.queue
+    category-sync-dlq: category.sync.dlq
+  routing-key:
+    product-created: product.created
+    product-updated: product.updated
+    product-deleted: product.deleted
+    category-created: category.created
+    category-updated: category.updated
+    category-deleted: category.deleted
+    category-sync-dlq: category.sync.dlq
+  retry:
+    max-attempts: 3
+    delay-ms: 500
+
+# Logging
+logging:
+  level:
+    com.ecommerce: INFO

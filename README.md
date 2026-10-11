@@ -41,6 +41,21 @@ Proyecto del ramo DESARROLLO CLOUD NATIVE I
 - **Flujo**: Authorization Code con PKCE
 - **Access Token**: JWT validado en backend y API Gateway
 
+### Mensajería asíncrona (RabbitMQ)
+- **RabbitMQ Admin Service** (puerto 8085): administra colas, exchanges y
+  bindings vía API REST (`/api/rabbit/**`, requiere rol admin).
+- **orders-service**: publica el evento `order.created` y consume la cola de
+  generación de **tickets/documentos**.
+- **users-service**: consume la cola de **notificaciones**.
+- **products-service** y **categories-service**: cada uno publica sus eventos
+  de catálogo (`product.*` / `category.*`) y consume los del otro dominio en
+  `catalog.exchange` (sincronización de catálogo).
+- **Dead Letter Queues (DLQ)**: los mensajes que agotan reintentos se envían a
+  `orders.dlx` / `catalog.dlx` y se registran en logs.
+- Config centralizada en `application.yml` (`messaging.*`) con beans
+  `Queue`/`Exchange`/`Binding`. Ver [RABBITMQ_SETUP.md](./RABBITMQ_SETUP.md).
+
+
 ## Instalación
 
 ### Prerrequisitos
@@ -107,16 +122,38 @@ export const environment = {
 
 ### 3. Backend
 
-Editar `src/main/resources/application.properties` en cada servicio:
+Cada servicio tiene su configuración en `src/main/resources/application.yml`
+(JWT de Azure AD, CORS y mensajería). Ajusta el emisor/audiencia:
 
-```properties
-# Azure AD Configuration (JWT: issuer + audience)
-spring.security.oauth2.resourceserver.jwt.issuer-uri=https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0
-spring.security.oauth2.resourceserver.jwt.audiences=api://tuki-tech-api
-
-# CORS Configuration
-cors.allowed-origins=http://localhost:4200,https://pastito-247.github.io
+```yaml
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0
+          audiences: api://tuki-tech-api
+cors:
+  allowed-origins: "http://localhost:4200,https://pastito-247.github.io"
 ```
+
+### 4. RabbitMQ
+
+Las credenciales se inyectan por variables de entorno (CloudAMQP o instancia
+existente). Ejemplo:
+
+```bash
+RABBITMQ_HOST=<instancia>.rmq.cloudamqp.com
+RABBITMQ_PORT=5671
+RABBITMQ_SSL=true
+RABBITMQ_USERNAME=<usuario>
+RABBITMQ_PASSWORD=<password>
+RABBITMQ_VHOST=<vhost>
+RABBITMQ_MANAGEMENT_URL=https://<instancia>.rmq.cloudamqp.com
+```
+
+Detalle completo de la topología, DLQ y endpoints en
+[RABBITMQ_SETUP.md](./RABBITMQ_SETUP.md).
 
 ## Despliegue
 
@@ -133,17 +170,18 @@ cors.allowed-origins=http://localhost:4200,https://pastito-247.github.io
 2. Instala Java y Maven en cada instancia
 3. Sube los JAR compilados
 4. Ejecuta cada servicio con `java -jar service.jar`
-5. Configura Security Groups para permitir tráfico en puertos 8081-8084
+5. Configura Security Groups para permitir tráfico en puertos 8081-8085
 
 ### AWS API Gateway
 
 Sigue la guía completa en [API_GATEWAY_DEPLOYMENT.md](./API_GATEWAY_DEPLOYMENT.md).
 Resumen (HTTP API de AWS):
 
-1. Crea una **HTTP API** con 6 rutas y 4 integraciones HTTP al EC2:
+1. Crea una **HTTP API** con integraciones HTTP al EC2:
    - `/api/public/products/{proxy+}` → 8081 (sin autorizador)
    - `/api/public/categories/{proxy+}` → 8082 (sin autorizador)
    - `/api/{products|categories|users|orders}/{proxy+}` → 8081-8084 (con autorizador JWT)
+   - `/api/rabbit/{proxy+}` → 8085 (con autorizador JWT + rol admin)
 2. Configura el **JWT authorizer**:
    - Issuer: `https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0`
    - Audience: `api://tuki-tech-api` (Application ID URI de la API)
@@ -161,6 +199,15 @@ Resumen (HTTP API de AWS):
 - **CORS**: Configurado en backend ✅
 - **GitHub Actions**: Workflow para deploy a GitHub Pages ✅
 - **Usuarios de prueba**: 1 por rol en Azure AD ✅
+
+### Entrega 2 (RabbitMQ)
+- **Nombres centralizados**: `application.yml` + `@ConfigurationProperties` ✅
+- **Beans Queue/Exchange/Binding**: en clases `RabbitMQConfig` ✅
+- **Productores y consumidores**: `order.created` → notificación + ticket; y
+  catálogo `product.*`/`category.*` entre products-service y categories-service ✅
+- **ACK/NACK explícito y DLQ**: reintentos, NACK sin requeue y logs de DLQ ✅
+- **Microservicio administrador**: `rabbitmq-admin-service` con API REST validada ✅
+- **Vista frontend**: `/admin/rabbitmq` para gestionar colas, exchanges y bindings ✅
 
 ## Estructura del Proyecto
 
@@ -180,18 +227,22 @@ CLOUD-NATIVE-I/
 │   │   └── deploy-pages.yml    # GitHub Actions
 │   └── package.json
 ├── backend/                     # Spring Boot Microservicios
-│   ├── products-service/       # Puerto 8081
+│   ├── products-service/       # Puerto 8081 (productor product.* + consumidor category.*)
 │   │   ├── src/main/java/com/ecommerce/products/
-│   │   │   ├── config/         # SecurityConfig (JWT, CORS)
+│   │   │   ├── config/         # SecurityConfig (JWT, CORS) + RabbitMQConfig
 │   │   │   ├── controller/     # REST APIs (públicas/privadas)
+│   │   │   ├── event/          # Contratos de eventos (product.*, category.*)
+│   │   │   ├── messaging/      # Productor y consumidores
 │   │   │   ├── model/          # Entity Product
 │   │   │   ├── repository/     # JPA Repository
 │   │   │   └── service/        # Business Logic
 │   │   └── src/main/resources/
-│   │       └── application.properties
-│   ├── categories-service/      # Puerto 8082
-│   ├── users-service/          # Puerto 8083
-│   └── orders-service/         # Puerto 8084
+│   │       └── application.yml # Config centralizada (messaging.*)
+│   ├── categories-service/      # Puerto 8082 (productor category.* + consumidor product.*)
+│   ├── users-service/          # Puerto 8083 (consumidor de notificaciones)
+│   ├── orders-service/         # Puerto 8084 (productor order.created + tickets)
+│   └── rabbitmq-admin-service/ # Puerto 8085 (administración de RabbitMQ)
+├── RABBITMQ_SETUP.md           # Guía de mensajería asíncrona (Entrega 2)
 ├── AZURE_AD_SETUP.md           # Guía configuración Azure AD
 ├── EC2_DEPLOYMENT.md           # Guía despliegue backend a EC2
 ├── API_GATEWAY_DEPLOYMENT.md   # Guía despliegue AWS API Gateway
@@ -233,6 +284,18 @@ CLOUD-NATIVE-I/
 - `PUT /api/orders/{id}` - Actualizar pedido
 - `DELETE /api/orders/{id}` - Eliminar pedido
 
+### API de administración de RabbitMQ (requieren rol admin)
+- `POST /api/rabbit/queues` - Crear cola
+- `GET /api/rabbit/queues` - Listar colas
+- `GET /api/rabbit/queues/{name}` - Detalle de una cola
+- `DELETE /api/rabbit/queues/{name}` - Eliminar cola
+- `POST /api/rabbit/exchanges` - Crear exchange
+- `GET /api/rabbit/exchanges` - Listar exchanges
+- `DELETE /api/rabbit/exchanges/{name}` - Eliminar exchange
+- `POST /api/rabbit/bindings` - Crear binding
+- `GET /api/rabbit/bindings` - Listar bindings
+- `DELETE /api/rabbit/bindings` - Eliminar binding
+
 ## Pruebas Locales
 
 ### 1. Iniciar microservicios
@@ -252,7 +315,15 @@ mvn spring-boot:run
 # Terminal 4
 cd backend/orders-service
 mvn spring-boot:run
+
+# Terminal 5
+cd backend/rabbitmq-admin-service
+mvn spring-boot:run
 ```
+
+> Alternativa (Windows): `.\scripts\run-backend.ps1 orders-service` carga
+> automáticamente las variables del `.env` raíz (incluidas las credenciales de
+> RabbitMQ/CloudAMQP) antes de arrancar.
 
 ### 2. Iniciar frontend
 ```bash

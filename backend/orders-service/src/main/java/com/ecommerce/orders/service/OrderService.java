@@ -1,5 +1,7 @@
 package com.ecommerce.orders.service;
 
+import com.ecommerce.orders.event.OrderCreatedEvent;
+import com.ecommerce.orders.messaging.OrderEventPublisher;
 import com.ecommerce.orders.model.Order;
 import com.ecommerce.orders.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,9 @@ public class OrderService {
     
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private OrderEventPublisher orderEventPublisher;
     
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
@@ -31,7 +36,18 @@ public class OrderService {
     }
     
     public Order createOrder(Order order) {
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+
+        // Notifica de forma asincrona la creacion del pedido (notificacion + ticket).
+        orderEventPublisher.publishOrderCreated(new OrderCreatedEvent(
+                saved.getId(),
+                saved.getUserEmail(),
+                saved.getTotal(),
+                saved.getStatus(),
+                saved.getShippingAddress(),
+                saved.getCreatedAt()));
+
+        return saved;
     }
     
     public Order updateOrder(Long id, Order orderDetails) {

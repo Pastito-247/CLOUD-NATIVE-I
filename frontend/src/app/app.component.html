@@ -44,6 +44,14 @@
       </a>
 
       <a
+        *ngIf="isLoggedIn && isAdmin"
+        routerLink="/admin/rabbitmq"
+        routerLinkActive="active"
+        (click)="menuOpen = false">
+        RabbitMQ
+      </a>
+
+      <a
         *ngIf="isLoggedIn"
         routerLink="/my-orders"
         routerLinkActive="active"

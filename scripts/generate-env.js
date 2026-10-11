@@ -65,6 +65,7 @@ export const environment = {
   categoriesUrl: '${devBackend || 'http://localhost:8082'}/api/categories',
   usersUrl: '${devBackend || 'http://localhost:' + (env.USERS_SERVICE_PORT || 8083)}/api/users',
   ordersUrl: '${devBackend || 'http://localhost:8084'}/api/orders',
+  rabbitUrl: '${devBackend || 'http://localhost:8085'}/api/rabbit',
   productsPublicUrl: '${devBackend || 'http://localhost:8081'}/api/public/products',
   categoriesPublicUrl: '${devBackend || 'http://localhost:8082'}/api/public/categories',
 
@@ -113,6 +114,7 @@ export const environment = {
   categoriesUrl: '${prodBackend}/api/categories',
   usersUrl: '${prodBackend}/api/users',
   ordersUrl: '${prodBackend}/api/orders',
+  rabbitUrl: '${prodBackend}/api/rabbit',
   productsPublicUrl: '${prodBackend}/api/public/products',
   categoriesPublicUrl: '${prodBackend}/api/public/categories',
 

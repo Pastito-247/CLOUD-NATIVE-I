@@ -1,10 +1,12 @@
 # Despliegue del Backend a AWS EC2
 
-Guía para publicar los 4 microservicios Spring Boot en **una sola instancia EC2**,
+Guía para publicar los 5 microservicios Spring Boot en **una sola instancia EC2**,
 usando JARs compilados en tu PC y servicios `systemd` para que corran como daemons.
 
 - **Frontend**: sigue local (`http://localhost:4200`) llamando directo a la IP del EC2.
-- **Backend**: 4 servicios (8081-8084) en 1 instancia Ubuntu.
+- **Backend**: 5 servicios (8081-8085) en 1 instancia Ubuntu.
+- **Mensajería**: `orders-service` y `users-service` publican/consumen en RabbitMQ
+  (CloudAMQP); `rabbitmq-admin-service` (8085) administra colas/exchanges vía REST.
 - **AUTH**: los servicios validan JWT contra Azure AD (mismo tenant configurado localmente).
 
 ---
@@ -14,13 +16,14 @@ usando JARs compilados en tu PC y servicios `systemd` para que corran como daemo
 ```
 Tu PC (Windows)
 ├── Frontend Angular  -> http://localhost:4200  (apunta a IP_EC2:808X)
-└── scp los 4 .jar
+└── scp los 5 .jar
 
 EC2 (Ubuntu 22.04) - sistema systemd
 ├── products-service   (8081)
 ├── categories-service (8082)
 ├── users-service      (8083)  <- arregla el puerto vacio via SERVER_PORT
-└── orders-service     (8084)
+├── orders-service     (8084)
+└── rabbitmq-admin-service (8085)  <- administra RabbitMQ (CloudAMQP)
 ```
 
 ---
@@ -45,6 +48,8 @@ cd ..\users-service
 mvn clean package -DskipTests
 cd ..\orders-service
 mvn clean package -DskipTests
+cd ..\rabbitmq-admin-service
+mvn clean package -DskipTests
 ```
 
 JARs generados (negrita = exacto):
@@ -55,8 +60,9 @@ JARs generados (negrita = exacto):
 | Categories | `backend\categories-service\target\categories-service-1.0.0.jar` |
 | Users | `backend\users-service\target\users-service-1.0.0.jar` |
 | Orders | `backend\orders-service\target\orders-service-1.0.0.jar` |
+| RabbitMQ Admin | `backend\rabbitmq-admin-service\target\rabbitmq-admin-service-1.0.0.jar` |
 
-Verifica que existan los 4 antes de seguir.
+Verifica que existan los 5 antes de seguir.
 
 ---
 
@@ -78,9 +84,10 @@ Verifica que existan los 4 antes de seguir.
      | Custom TCP | 8082 | 0.0.0.0/0 | categories |
      | Custom TCP | 8083 | 0.0.0.0/0 | users |
      | Custom TCP | 8084 | 0.0.0.0/0 | orders |
+     | Custom TCP | 8085 | 0.0.0.0/0 | rabbitmq-admin |
 7. **Launch instance**.
 
-> ⚠️ Para desarrollo puedes abrir 8081-8084 a `0.0.0.0/0` (los endpoints públicos no requieren token).
+> ⚠️ Para desarrollo puedes abrir 8081-8085 a `0.0.0.0/0` (los endpoints públicos no requieren token).
 > En producción restringe a la IP del frontend o usa API Gateway.
 
 8. **Elastic IP (recomendado)**: EC2 → Elastic IPs → Allocate → Associate con tu instancia.
@@ -123,6 +130,7 @@ scp -i TU_KEY.pem backend/products-service/target/products-service-1.0.0.jar   u
 scp -i TU_KEY.pem backend/categories-service/target/categories-service-1.0.0.jar ubuntu@IP_EC2:~/apps/
 scp -i TU_KEY.pem backend/users-service/target/users-service-1.0.0.jar           ubuntu@IP_EC2:~/apps/
 scp -i TU_KEY.pem backend/orders-service/target/orders-service-1.0.0.jar         ubuntu@IP_EC2:~/apps/
+scp -i TU_KEY.pem backend/rabbitmq-admin-service/target/rabbitmq-admin-service-1.0.0.jar ubuntu@IP_EC2:~/apps/
 ```
 
 Verifica dentro del EC2:
@@ -135,14 +143,17 @@ ls -lh ~/apps
 
 ## Fase 5 — Crear los servicios systemd
 
-Conectado al EC2, crea los 4 unit files. Las `Environment=` **sobreescriben** los
-`application.properties` (Spring Boot da prioridad a variables de entorno), lo que
+Conectado al EC2, crea los 5 unit files. Las `Environment=` **sobreescriben** los
+`application.yml` (Spring Boot da prioridad a variables de entorno), lo que
 aprovechamos para:
 
-- Forzar el puerto 8083 en users-service (su `server.port=` está vacío en el repo).
+- Forzar el puerto 8083 en users-service.
 - Fijar la `audience` (`api://tuki-tech-api`): el access token de Entra AD debe traer
   ese valor en el claim `aud`, o el servicio responde `401 invalid_token`.
-- Pasar el `issuer` correcto a los 4 servicios (same tenant de Azure AD).
+- Pasar el `issuer` correcto a los servicios (same tenant de Azure AD).
+- Pasar las credenciales de **RabbitMQ/CloudAMQP** (`RABBITMQ_*`) a products,
+  categories, orders, users y rabbitmq-admin. Sin ellas el default es
+  `localhost` y no habrá conexión.
 
 ### 1) products-service
 
@@ -161,6 +172,13 @@ Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
+Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_PORT=5671
+Environment=RABBITMQ_SSL=true
+Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
+Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
+Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
+Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/products-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -187,6 +205,13 @@ Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
+Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_PORT=5671
+Environment=RABBITMQ_SSL=true
+Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
+Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
+Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
+Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/categories-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -214,6 +239,13 @@ Environment=SERVER_PORT=8083
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
+Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_PORT=5671
+Environment=RABBITMQ_SSL=true
+Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
+Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
+Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
+Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/users-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -240,6 +272,13 @@ Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
+Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_PORT=5671
+Environment=RABBITMQ_SSL=true
+Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
+Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
+Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
+Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/orders-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -249,14 +288,49 @@ WantedBy=multi-user.target
 EOF
 ```
 
-### Iniciar y habilitar los 4
+### 5) rabbitmq-admin-service
+
+```bash
+sudo tee /etc/systemd/system/tuki-rabbit-admin.service > /dev/null <<'EOF'
+[Unit]
+Description=RabbitMQ Admin Service (Tuki-Tech)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/apps
+Environment=JAVA_TOOL_OPTIONS=-Xmx256m
+Environment=SERVER_PORT=8085
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
+Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
+Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_PORT=5671
+Environment=RABBITMQ_SSL=true
+Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
+Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
+Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
+Environment=RABBITMQ_MANAGEMENT_ENABLED=true
+Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
+ExecStart=/usr/bin/java -jar /home/ubuntu/apps/rabbitmq-admin-service-1.0.0.jar
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+### Iniciar y habilitar los 5
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now tuki-products tuki-categories tuki-users tuki-orders
+sudo systemctl enable --now tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin
 ```
 
-> Si usas `t2.micro` (1 GB RAM), baja el heap a `-Xmx192m` en los 4 units
+> Si usas `t2.micro` (1 GB RAM), baja el heap a `-Xmx192m` en los 5 units
 > o solo 2 servicios arrancarán bien a la vez.
 
 ---
@@ -267,16 +341,17 @@ En el EC2:
 
 ```bash
 sudo systemctl status tuki-products --no-pager -l
-ss -tlnp | grep -E '808[1-4]'
+ss -tlnp | grep -E '808[1-5]'
 ```
 
-Deberías ver `java` escuchando en 8081, 8082, 8083 y 8084.
+Deberías ver `java` escuchando en 8081, 8082, 8083, 8084 y 8085.
 
 Desde tu PC (PowerShell):
 
 ```powershell
 curl http://IP_EC2:8081/api/public/products
 curl http://IP_EC2:8082/api/public/categories
+curl http://IP_EC2:8085/api/rabbit/queues   # -> 401 sin token (requiere rol admin)
 ```
 
 Respuesta esperada: un JSON `[]` (sin datos aún) o `{"products": []}`/`{"categories": []}`
@@ -303,6 +378,7 @@ productsUrl:   'http://IP_EC2:8081/api/products',
 categoriesUrl: 'http://IP_EC2:8082/api/categories',
 usersUrl:      'http://IP_EC2:8083/api/users',
 ordersUrl:     'http://IP_EC2:8084/api/orders',
+rabbitUrl:     'http://IP_EC2:8085/api/rabbit',
 ```
 
 Y recarga `ng serve`. La autenticación sigue funcionando porque los JWT
@@ -323,7 +399,7 @@ sudo systemctl restart tuki-products
 journalctl -u tuki-products --since "1 hour ago" -p warning
 
 # Detener todo
-sudo systemctl stop tuki-products tuki-categories tuki-users tuki-orders
+sudo systemctl stop tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin
 ```
 
 **Actualizar un servicio** (nueva versión):
@@ -348,11 +424,11 @@ que el Home muestre el catálogo.
 Asumiendo que los JARs ya se subieron (`~/apps/`):
 
 1. **EC2 → Start instance** (consola AWS), espera a que `2/2 checks passed`.
-2. **SSH** y arranca/verifica los 4 servicios:
+2. **SSH** y arranca/verifica los 5 servicios:
    ```bash
-   sudo systemctl start tuki-products tuki-categories tuki-users tuki-orders
+   sudo systemctl start tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin
    sudo systemctl status tuki-products --no-pager -l | head -20
-   ss -tlnp | grep -E '808[1-4]'
+   ss -tlnp | grep -E '808[1-5]'
    ```
    (la primera vez Spring toma 30-60s en arrancar)
 3. **API Gateway** (consola AWS): verifica que el stage `$default` esté **Deployed**
@@ -361,6 +437,7 @@ Asumiendo que los JARs ya se subieron (`~/apps/`):
    ```powershell
    curl https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/public/products
    curl https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/products   # -> 401 sin token
+   curl https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/rabbit/queues   # -> 401 sin token admin
    ```
 5. Home `https://pastito-247.github.io/CLOUD-NATIVE-I` con productos cargados (sin login).
 
@@ -373,11 +450,16 @@ Asumiendo que los JARs ya se subieron (`~/apps/`):
   producción deberías migrar a RDS MySQL (ver README) o cambiar el properties.
 
 - **users-service**: ya quedó arreglado en el repo (`server.port=8083`, issuer y
-  audience en `application.properties`). La Fase 5 fuerza además el puerto y la
+  audience en `application.yml`). La Fase 5 fuerza además el puerto y la
   audience por variables de entorno como respaldo.
 
+- **RabbitMQ/CloudAMQP**: `orders-service` y `users-service` abren conexión **saliente**
+  TLS al broker (puerto 5671) al arrancar; el Security Group por defecto permite toda
+  la salida, así que no hace falta abrir nada de entrada para RabbitMQ. Si arrancan sin
+  las `RABBITMQ_*` correctas, caen por defecto a `localhost` y fallarán al conectar.
+
 - **CORS**: si publicas el frontend en GitHub Pages, agrega tu URL
-  (ej: `https://pastito-247.github.io`) en `CORS_ALLOWED_ORIGINS` de los 4 units
+  (ej: `https://pastito-247.github.io`) en `CORS_ALLOWED_ORIGINS` de los 5 units
   (separada por coma) y `systemctl restart` cada servicio. Ya se quitaron los
   `@CrossOrigin("*")` de los controllers: todo el CORS sale del `SecurityConfig`
   (`cors.allowed-origins` / `CORS_ALLOWED_ORIGINS`).
