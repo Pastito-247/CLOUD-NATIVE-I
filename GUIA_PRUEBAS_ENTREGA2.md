@@ -57,6 +57,26 @@ categories-service     : BUILD SUCCESS
    `/api/public/products/{proxy+}` pero los endpoints reales son
    `/api/products/public`. Unificar para evitar confusión en la defensa.
 
+### Resuelto tras depurar el despliegue real (EC2 + CloudAMQP)
+
+La demo end-to-end destapó 3 causas que dejaban la mensajería sin operar y que
+quedaron corregidas en esta iteración:
+
+7. **Audiencia JWT.** Entra no siempre emite `aud` = Application ID URI
+   (`api://tuki-tech-api`); emite el Application (client) ID (GUID
+   `66c0f84b-3701-42fb-9189-3f4092cba201`). Los `application.yml` y los units
+   ahora aceptan **ambos** (lista separada por coma). Síntoma previo: el admin
+   respondía `401 invalid_token` / "The required audience is missing".
+8. **`Jackson2JsonMessageConverter` sin `JavaTimeModule`.** Publicar
+   `order.created` fallaba con `Failed to convert Message content`
+   (`LocalDateTime` no soportado por el ObjectMapper por defecto). Ahora el
+   converter reusa el `ObjectMapper` de Spring Boot (registra `JavaTimeModule`)
+   en los 4 servicios.
+9. **Units sin `RABBITMQ_*`.** orders/users/products/categories arrancaban contra
+   `localhost` (todas las colas con `consumers: 0`). Verifícalo con
+   `sudo systemctl cat tuki-orders | grep -i RABBITMQ`. `EC2_DEPLOYMENT.md` ya
+   incluye esas variables en los 5 units (CloudAMQP, puerto 5671 TLS).
+
 ---
 
 ## 3. Guía de pruebas paso a paso

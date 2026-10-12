@@ -148,8 +148,10 @@ Conectado al EC2, crea los 5 unit files. Las `Environment=` **sobreescriben** lo
 aprovechamos para:
 
 - Forzar el puerto 8083 en users-service.
-- Fijar la `audience` (`api://tuki-tech-api`): el access token de Entra AD debe traer
-  ese valor en el claim `aud`, o el servicio responde `401 invalid_token`.
+- Fijar la `audience`: el access token de Entra AD trae en el claim `aud` el
+  Application (client) ID (GUID `66c0f84b-...`), no siempre el Application ID URI
+  (`api://tuki-tech-api`). Se aceptan **ambos** (lista separada por coma), o el
+  servicio responde `401 invalid_token` con "The required audience is missing".
 - Pasar el `issuer` correcto a los servicios (same tenant de Azure AD).
 - Pasar las credenciales de **RabbitMQ/CloudAMQP** (`RABBITMQ_*`) a products,
   categories, orders, users y rabbitmq-admin. Sin ellas el default es
@@ -170,7 +172,7 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu/apps
 Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
-Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
 Environment=RABBITMQ_PORT=5671
@@ -203,7 +205,7 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu/apps
 Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
-Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
 Environment=RABBITMQ_PORT=5671
@@ -237,7 +239,7 @@ WorkingDirectory=/home/ubuntu/apps
 Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SERVER_PORT=8083
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
-Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
 Environment=RABBITMQ_PORT=5671
@@ -270,7 +272,7 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu/apps
 Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
-Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
 Environment=RABBITMQ_PORT=5671
@@ -304,7 +306,7 @@ WorkingDirectory=/home/ubuntu/apps
 Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SERVER_PORT=8085
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
-Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api
+Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
 Environment=RABBITMQ_PORT=5671
