@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: rabbitmq-admin-service
+
+  # Azure AD Configuration (JWT: issuer + audience)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0}
+          audiences: ${JWT_AUDIENCE:api://tuki-tech-api}
+
+  # RabbitMQ (CloudAMQP / instancia existente). Overridable por variables de entorno.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    ssl:
+      enabled: ${RABBITMQ_SSL:false}
+
+server:
+  port: 8085
+
+# CORS Configuration
+cors:
+  allowed-origins: "http://localhost:4200,https://pastito-247.github.io"
+
+# Management HTTP API de RabbitMQ (CloudAMQP la expone en el mismo host).
+# Se usa solo para listar recursos; la creacion/eliminacion usa AMQP (RabbitAdmin).
+rabbitmq:
+  management:
+    enabled: ${RABBITMQ_MANAGEMENT_ENABLED:true}
+    base-url: ${RABBITMQ_MANAGEMENT_URL:http://localhost:15672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+logging:
+  level:
+    com.ecommerce: INFO

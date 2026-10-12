@@ -111,7 +111,7 @@ En EC2 → tu instancia → Security → Security group → **Edit inbound rules
 | HTTPS | 443 | 0.0.0.0/0 |
 
 El puerto 80 es necesario para que Let's Encrypt valide el certificado (HTTP-01).
-(8081-8084 pueden quedar abiertos para debugging, o cerrarlos ya.)
+(8081-8085 pueden quedar abiertos para debugging, o cerrarlos ya.)
 
 ### 1.5 Instalar Caddy en el EC2
 
@@ -141,6 +141,7 @@ sudo tee /etc/caddy/Caddyfile > /dev/null <<'EOF'
     reverse_proxy /api/categories* 127.0.0.1:8082
     reverse_proxy /api/users* 127.0.0.1:8083
     reverse_proxy /api/orders* 127.0.0.1:8084
+    reverse_proxy /api/rabbit* 127.0.0.1:8085
 }
 EOF
 
@@ -165,7 +166,7 @@ Debe responder el mismo JSON que probabas con la IP. Si falla, espera 1-2 min
 
 ---
 
-## Fase 2 — CORS en los 4 servicios
+## Fase 2 — CORS en los 5 servicios
 
 El navegador del sitio publicado enviará `Origin: https://pastito-247.github.io`.
 Agrega esa URL en cada unidad systemd (y conserva `http://localhost:4200`
@@ -181,17 +182,17 @@ por
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 ```
 
-Repite en `tuki-categories`, `tuki-users` y `tuki-orders`. Luego:
+Repite en `tuki-categories`, `tuki-users`, `tuki-orders` y `tuki-rabbit-admin`. Luego:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl restart tuki-products tuki-categories tuki-users tuki-orders
+sudo systemctl restart tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin
 ```
 
 > Nota: los controllers ya no llevan `@CrossOrigin("*")` (se quitaron al migrar a
 > la validación por `issuer` + `audience`). Todo el CORS sale del `SecurityConfig`
 > (`cors.allowed-origins`), por eso es obligatorio actualizar el
-> `CORS_ALLOWED_ORIGINS` en los 4 servicios.
+> `CORS_ALLOWED_ORIGINS` en los 5 servicios.
 
 ---
 
@@ -296,4 +297,4 @@ Recuerda: con la Opción A el hostname depende de la Elastic IP — si la IP cam
 cambia el host; con dominio propio solo cambias el registro A.
 
 **Volver a desarrollo local**: no afecta, porque el environment de desarrollo sigue
-apuntando a `http://localhost:8081-8084` y CORS ya permite `http://localhost:4200`.
+apuntando a `http://localhost:8081-8085` y CORS ya permite `http://localhost:4200`.

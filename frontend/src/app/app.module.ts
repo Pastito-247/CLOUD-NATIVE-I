@@ -9,6 +9,7 @@ import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
 import { AdminComponent } from './admin/admin.component';
 import { MyOrdersComponent } from './my-orders/my-orders.component';
+import { RabbitmqAdminComponent } from './rabbitmq-admin/rabbitmq-admin.component';
 
 import {
   MsalModule,
@@ -73,7 +74,8 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     [environment.productsUrl, environment.scopes],
     [environment.categoriesUrl, environment.scopes],
     [environment.usersUrl, environment.scopes],
-    [environment.ordersUrl, environment.scopes]
+    [environment.ordersUrl, environment.scopes],
+    [environment.rabbitUrl, environment.scopes]
   ])
 };
 
@@ -83,7 +85,8 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     HomeComponent,
     LoginComponent,
     AdminComponent,
-    MyOrdersComponent
+    MyOrdersComponent,
+    RabbitmqAdminComponent
   ],
 
   imports: [

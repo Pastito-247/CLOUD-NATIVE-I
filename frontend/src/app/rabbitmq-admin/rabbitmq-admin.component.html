@@ -1,0 +1,193 @@
+<div class="admin-container">
+
+  <div class="admin-header">
+    <div>
+      <h2>Administración de RabbitMQ</h2>
+      <p class="admin-subtitle">Crea y elimina colas, exchanges y bindings de la mensajería asíncrona.</p>
+    </div>
+    <span class="admin-badge">🐰 RabbitMQ Admin</span>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button (click)="setActiveTab('queues')" [class.active]="activeTab === 'queues'">Colas</button>
+    <button (click)="setActiveTab('exchanges')" [class.active]="activeTab === 'exchanges'">Exchanges</button>
+    <button (click)="setActiveTab('bindings')" [class.active]="activeTab === 'bindings'">Bindings</button>
+  </div>
+
+  <!-- MENSAJES -->
+  <div class="message success" *ngIf="successMessage">{{ successMessage }}</div>
+  <div class="message error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <!-- ========================================================= -->
+  <!-- COLAS -->
+  <!-- ========================================================= -->
+  <section *ngIf="activeTab === 'queues'">
+
+    <div class="panel">
+      <h3>Crear cola</h3>
+      <div class="form-grid">
+        <label>
+          Nombre
+          <input type="text" [(ngModel)]="queueForm.name" placeholder="ej: mi.cola.queue">
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" [(ngModel)]="queueForm.durable"> Durable
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" [(ngModel)]="queueForm.exclusive"> Exclusiva
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" [(ngModel)]="queueForm.autoDelete"> Auto-delete
+        </label>
+        <button class="btn-primary" (click)="createQueue()">Crear cola</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Colas existentes</h3>
+      <p *ngIf="loadingQueues">Cargando...</p>
+      <table class="data-table" *ngIf="!loadingQueues">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Durable</th>
+            <th>Mensajes</th>
+            <th>Consumidores</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let q of queues">
+            <td>{{ q.name }}</td>
+            <td>{{ q.durable ? 'Sí' : 'No' }}</td>
+            <td>{{ q.messages ?? '-' }}</td>
+            <td>{{ q.consumers ?? '-' }}</td>
+            <td>{{ q.state || '-' }}</td>
+            <td>
+              <button class="btn-danger" (click)="deleteQueue(q)">Eliminar</button>
+            </td>
+          </tr>
+          <tr *ngIf="queues.length === 0">
+            <td colspan="6" class="empty">No hay colas (o la Management API no está disponible).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- EXCHANGES -->
+  <!-- ========================================================= -->
+  <section *ngIf="activeTab === 'exchanges'">
+
+    <div class="panel">
+      <h3>Crear exchange</h3>
+      <div class="form-grid">
+        <label>
+          Nombre
+          <input type="text" [(ngModel)]="exchangeForm.name" placeholder="ej: mi.exchange">
+        </label>
+        <label>
+          Tipo
+          <select [(ngModel)]="exchangeForm.type">
+            <option *ngFor="let t of exchangeTypes" [value]="t">{{ t }}</option>
+          </select>
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" [(ngModel)]="exchangeForm.durable"> Durable
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" [(ngModel)]="exchangeForm.autoDelete"> Auto-delete
+        </label>
+        <button class="btn-primary" (click)="createExchange()">Crear exchange</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Exchanges existentes</h3>
+      <p *ngIf="loadingExchanges">Cargando...</p>
+      <table class="data-table" *ngIf="!loadingExchanges">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Durable</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let e of exchanges">
+            <td>{{ e.name }}</td>
+            <td>{{ e.type || '-' }}</td>
+            <td>{{ e.durable ? 'Sí' : 'No' }}</td>
+            <td>
+              <button class="btn-danger" (click)="deleteExchange(e)">Eliminar</button>
+            </td>
+          </tr>
+          <tr *ngIf="exchanges.length === 0">
+            <td colspan="4" class="empty">No hay exchanges (o la Management API no está disponible).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- BINDINGS -->
+  <!-- ========================================================= -->
+  <section *ngIf="activeTab === 'bindings'">
+
+    <div class="panel">
+      <h3>Crear binding</h3>
+      <div class="form-grid">
+        <label>
+          Exchange
+          <input type="text" [(ngModel)]="bindingForm.exchange" placeholder="ej: orders.exchange">
+        </label>
+        <label>
+          Cola
+          <input type="text" [(ngModel)]="bindingForm.queue" placeholder="ej: order.ticket.queue">
+        </label>
+        <label>
+          Routing key
+          <input type="text" [(ngModel)]="bindingForm.routingKey" placeholder="ej: order.created">
+        </label>
+        <button class="btn-primary" (click)="createBinding()">Crear binding</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Bindings existentes</h3>
+      <p *ngIf="loadingBindings">Cargando...</p>
+      <table class="data-table" *ngIf="!loadingBindings">
+        <thead>
+          <tr>
+            <th>Exchange (source)</th>
+            <th>Destino</th>
+            <th>Routing key</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of bindings">
+            <td>{{ b.source }}</td>
+            <td>{{ b.destination }}</td>
+            <td>{{ b.routingKey || '(vacía)' }}</td>
+            <td>
+              <button class="btn-danger" (click)="deleteBinding(b)">Eliminar</button>
+            </td>
+          </tr>
+          <tr *ngIf="bindings.length === 0">
+            <td colspan="4" class="empty">No hay bindings (o la Management API no está disponible).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+</div>

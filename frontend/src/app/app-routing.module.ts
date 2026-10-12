@@ -6,6 +6,7 @@ import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
 import { AdminComponent } from './admin/admin.component';
 import { MyOrdersComponent } from './my-orders/my-orders.component';
+import { RabbitmqAdminComponent } from './rabbitmq-admin/rabbitmq-admin.component';
 
 const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -21,6 +22,11 @@ const routes: Routes = [
     component: AdminComponent,
     // MsalGuard: requiere estar autenticado (login)
     // AdminRoleGuard: ademas requiere rol 'admin' claim en el ID token
+    canActivate: [MsalGuard, AdminRoleGuard]
+  },
+  {
+    path: 'admin/rabbitmq',
+    component: RabbitmqAdminComponent,
     canActivate: [MsalGuard, AdminRoleGuard]
   },
   { path: '**', redirectTo: '' }
