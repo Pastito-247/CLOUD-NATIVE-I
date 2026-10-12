@@ -1,0 +1,60 @@
+# =====================================================================
+# Cluster RabbitMQ de 2 nodos (demo Entrega 2 - mensajeria).
+#
+# Levanta dos brokers (rabbitmq1, rabbitmq2) que forman un cluster
+# automaticamente mediante peer discovery (ver docker/rabbitmq/rabbitmq.conf)
+# y una erlang cookie compartida.
+#
+#   docker compose up -d
+#   docker exec rabbitmq1 rabbitmqctl cluster_status   # deben verse 2 nodos
+#
+# Management UI:  http://localhost:15672 (rabbitmq1) y http://localhost:15673 (rabbitmq2)
+# AMQP:           localhost:5672        (rabbitmq1) y localhost:5673        (rabbitmq2)
+# Credenciales:   tuki / tuki
+#
+# Los microservicios se conectan a localhost:5672 con:
+#   RABBITMQ_HOST=localhost RABBITMQ_PORT=5672 RABBITMQ_USERNAME=tuki
+#   RABBITMQ_PASSWORD=tuki RABBITMQ_VHOST=/ RABBITMQ_SSL=false
+# =====================================================================
+services:
+  rabbitmq1:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq1
+    hostname: rabbitmq1
+    environment:
+      RABBITMQ_ERLANG_COOKIE: tuki-cluster-cookie
+      RABBITMQ_DEFAULT_USER: tuki
+      RABBITMQ_DEFAULT_PASS: tuki
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # Management UI / HTTP API
+    volumes:
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq1-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq2:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq2
+    hostname: rabbitmq2
+    environment:
+      RABBITMQ_ERLANG_COOKIE: tuki-cluster-cookie
+      RABBITMQ_DEFAULT_USER: tuki
+      RABBITMQ_DEFAULT_PASS: tuki
+    ports:
+      - "5673:5672"     # AMQP
+      - "15673:15672"   # Management UI / HTTP API
+    volumes:
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq2-data:/var/lib/rabbitmq
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+
+volumes:
+  rabbitmq1-data:
+  rabbitmq2-data:
