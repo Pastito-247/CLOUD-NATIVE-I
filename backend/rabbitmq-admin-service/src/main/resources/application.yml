@@ -8,7 +8,8 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${JWT_ISSUER_URI:https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0}
-          audiences: ${JWT_AUDIENCE:api://tuki-tech-api}
+          # Entra puede emitir el Application ID URI o el Application (client) ID (GUID).
+          audiences: ${JWT_AUDIENCE:api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201}
 
   # RabbitMQ (CloudAMQP / instancia existente). Overridable por variables de entorno.
   rabbitmq:

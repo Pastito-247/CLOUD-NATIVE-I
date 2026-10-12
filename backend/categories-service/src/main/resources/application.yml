@@ -31,9 +31,10 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
-          # Audiencia = claim 'aud' del access token de Entra (Application ID URI de la API).
-          # Debe coincidir con el valor del JWT authorizer del API Gateway y el frontend scope.
-          audiences: api://tuki-tech-api
+          # Audiencia = claim 'aud' del access token de Entra. Entra puede emitir el
+          # Application ID URI (api://tuki-tech-api) o el Application (client) ID (GUID);
+          # se aceptan ambos. Debe coincidir con el JWT authorizer del API Gateway.
+          audiences: api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 
   # RabbitMQ (CloudAMQP / instancia existente). Overridable por variables de entorno.
   rabbitmq:

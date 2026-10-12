@@ -1,5 +1,6 @@
 package com.ecommerce.orders.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
@@ -123,8 +124,10 @@ public class RabbitMQConfig {
     // ------------------------------------------------------------------
 
     @Bean
-    public Jackson2JsonMessageConverter jsonMessageConverter() {
-        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
+    public Jackson2JsonMessageConverter jsonMessageConverter(ObjectMapper objectMapper) {
+        // Se reusa el ObjectMapper de Spring Boot para que JavaTimeModule
+        // (LocalDateTime) quede registrado; el default no lo trae.
+        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter(objectMapper);
         // El tipo se infiere del parametro del @RabbitListener; evita depender
         // del header __TypeId__ (los servicios viven en paquetes distintos).
         converter.setTypePrecedence(TypePrecedence.INFERRED);
