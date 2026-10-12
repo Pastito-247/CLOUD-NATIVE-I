@@ -171,6 +171,9 @@ docker exec rabbitmq1 rabbitmqctl cluster_status   # 2 nodos
   (`docker/rabbitmq/rabbitmq.conf`).
 - Credenciales locales `tuki / tuki` (ajústalas en `.env`).
 
+**Verificado (12/10/2026):** `docker compose up -d --wait` → nodos `rabbit@rabbitmq1`
+y `rabbit@rabbitmq2` `running`, RabbitMQ 3.13.7, sin alarms ni particiones.
+
 ## 6. Frontend
 
 El panel admin incluye la vista **RabbitMQ** (`/admin/rabbitmq`), protegida por

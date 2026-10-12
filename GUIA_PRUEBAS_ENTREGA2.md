@@ -35,10 +35,12 @@ categories-service     : BUILD SUCCESS
 ## 2. Qué falta / recomendaciones
 
 ### Crítico para la demo
-1. **RabbitMQ local: RESUELTO.** Ya existe `docker-compose.yml` en la raíz que
-   levanta un **clúster de 2 nodos** (`rabbitmq1`, `rabbitmq2`) con peer discovery
+1. **RabbitMQ local: RESUELTO Y VERIFICADO (12/10/2026).** Ya existe
+   `docker-compose.yml` en la raíz que levanta un **clúster de 2 nodos**
+   (`rabbitmq1`, `rabbitmq2`) con peer discovery
    (`docker/rabbitmq/rabbitmq.conf`). Cubre lo que pide la pauta: "dos nodos
-   RabbitMQ en clúster" y "docker-compose levantando RabbitMQ". Ver sección 3.1.
+   RabbitMQ en clúster" y "docker-compose levantando RabbitMQ". Ver sección 3.1,
+   donde se registra el `cluster_status` real de la validación.
 2. **Ruta del API Gateway para el administrador.** El frontend llama a
    `<PROD_BACKEND_URL>/api/rabbit`; debe existir la ruta
    `/api/rabbit/{proxy+}` → `:8085` con el JWT authorizer y rol admin,
@@ -102,6 +104,27 @@ docker exec rabbitmq1 rabbitmqctl cluster_status   # 2 nodos: rabbit@rabbitmq1, 
 - AMQP: `localhost:5672` (rabbitmq1) y `localhost:5673` (rabbitmq2).
 - Ambos nodos comparten la topología: cualquiera de las dos UIs muestra las mismas
   colas/exchanges (evidencia del clúster).
+
+**Verificado con Docker Desktop 4.94.0 (12/10/2026):** `docker compose up -d --wait`
+deja ambos contenedores `healthy` y `rabbitmqctl cluster_status` reporta:
+
+```text
+Disk Nodes
+rabbit@rabbitmq1
+rabbit@rabbitmq2
+
+Running Nodes
+rabbit@rabbitmq1
+rabbit@rabbitmq2
+
+Versions: RabbitMQ 3.13.7 (Erlang 26.2.5.16) en ambos nodos
+Alarms: (none)   Network Partitions: (none)
+```
+
+Nota: si al ejecutar `docker compose` fallas con
+`error getting credentials - exec: "docker-credential-desktop": executable file
+not found`, antepone el bin de Docker Desktop a tu PATH:
+`$env:Path = "$env:LOCALAPPDATA\Programs\DockerDesktop\resources\bin;$env:Path"`.
 
 Para apuntar los microservicios a este clúster local, `.env` debe usar
 `localhost:5672` con `tuki/tuki`:
