@@ -156,6 +156,21 @@ RABBITMQ_MANAGEMENT_URL=https://<instancia>.rmq.cloudamqp.com
 > Management API por HTTPS para el mismo host. Si tu plan no incluye management,
 > los `GET` de listado devolverán listas vacías sin afectar la creación/eliminación.
 
+### Clúster local (docker-compose)
+
+Para la demo, `docker-compose.yml` (raíz) levanta **2 nodos RabbitMQ en clúster**:
+
+```powershell
+docker compose up -d
+docker exec rabbitmq1 rabbitmqctl cluster_status   # 2 nodos
+```
+
+- `rabbitmq1` → UI `http://localhost:15672`, AMQP `localhost:5672`
+- `rabbitmq2` → UI `http://localhost:15673`, AMQP `localhost:5673`
+- Integración del clúster: erlang cookie compartida + peer discovery
+  (`docker/rabbitmq/rabbitmq.conf`).
+- Credenciales locales `tuki / tuki` (ajústalas en `.env`).
+
 ## 6. Frontend
 
 El panel admin incluye la vista **RabbitMQ** (`/admin/rabbitmq`), protegida por

@@ -35,9 +35,10 @@ categories-service     : BUILD SUCCESS
 ## 2. Qué falta / recomendaciones
 
 ### Crítico para la demo
-1. **No hay RabbitMQ local levantado por el proyecto.** No existe `docker-compose.yml`.
-   Hoy hay que instalar RabbitMQ a mano o apuntar a CloudAMQP. Agregar el
-   `docker-compose.yml` de la sección 3.1 hace la demo reproducible en 1 comando.
+1. **RabbitMQ local: RESUELTO.** Ya existe `docker-compose.yml` en la raíz que
+   levanta un **clúster de 2 nodos** (`rabbitmq1`, `rabbitmq2`) con peer discovery
+   (`docker/rabbitmq/rabbitmq.conf`). Cubre lo que pide la pauta: "dos nodos
+   RabbitMQ en clúster" y "docker-compose levantando RabbitMQ". Ver sección 3.1.
 2. **Ruta del API Gateway para el administrador.** El frontend llama a
    `<PROD_BACKEND_URL>/api/rabbit`; debe existir la ruta
    `/api/rabbit/{proxy+}` → `:8085` con el JWT authorizer y rol admin,
@@ -85,37 +86,38 @@ quedaron corregidas en esta iteración:
 - Java 21, Maven 3.9+, Node 20+, Docker Desktop (para RabbitMQ local).
 - En Windows usar `curl.exe` (no el alias `curl` de PowerShell).
 
-### 3.1 Levantar RabbitMQ local (Docker)
+### 3.1 Levantar RabbitMQ local (Docker) — clúster de 2 nodos
 
-Crear `docker-compose.yml` en la raíz del repo (si aún no existe):
-
-```yaml
-services:
-  rabbitmq:
-    image: rabbitmq:3.13-management
-    container_name: tuki-rabbitmq
-    ports:
-      - "5672:5672"    # AMQP
-      - "15672:15672"  # Management UI / HTTP API
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-```
-
-Levantar y verificar:
+El repo trae `docker-compose.yml` (raíz) + `docker/rabbitmq/rabbitmq.conf`, que
+levantan **dos nodos RabbitMQ** que forman un clúster automáticamente:
 
 ```powershell
 docker compose up -d
-# UI: http://localhost:15672  (guest / guest)
+docker ps                                          # rabbitmq1 y rabbitmq2
+docker exec rabbitmq1 rabbitmqctl cluster_status   # 2 nodos: rabbit@rabbitmq1, rabbit@rabbitmq2
 ```
 
-> Para la demo también sirve una instancia CloudAMQP. En ese caso ajusta
-> `RABBITMQ_HOST/PORT=5671/SSL=true/VHOST` en `.env` y
+- Management UI: `http://localhost:15672` (rabbitmq1) y `http://localhost:15673`
+  (rabbitmq2), credenciales `tuki / tuki`.
+- AMQP: `localhost:5672` (rabbitmq1) y `localhost:5673` (rabbitmq2).
+- Ambos nodos comparten la topología: cualquiera de las dos UIs muestra las mismas
+  colas/exchanges (evidencia del clúster).
+
+Para apuntar los microservicios a este clúster local, `.env` debe usar
+`localhost:5672` con `tuki/tuki`:
+
+```
+RABBITMQ_HOST=localhost
+RABBITMQ_PORT=5672
+RABBITMQ_USERNAME=tuki
+RABBITMQ_PASSWORD=tuki
+RABBITMQ_VHOST=/
+RABBITMQ_SSL=false
+RABBITMQ_MANAGEMENT_URL=http://localhost:15672
+```
+
+> Para la demo también sirve una instancia CloudAMQP (broker único). En ese caso
+> ajusta `RABBITMQ_PORT=5671 / SSL=true / VHOST` y
 > `RABBITMQ_MANAGEMENT_URL=https://<instancia>.rmq.cloudamqp.com`.
 
 ### 3.2 Configurar `.env`
