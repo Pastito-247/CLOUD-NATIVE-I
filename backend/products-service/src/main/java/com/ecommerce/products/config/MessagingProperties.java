@@ -36,6 +36,8 @@ public class MessagingProperties {
     public static class Exchange {
         private String catalog;
         private String deadLetter;
+        private String receipt;
+        private String receiptDeadLetter;
 
         public String getCatalog() {
             return catalog;
@@ -52,11 +54,29 @@ public class MessagingProperties {
         public void setDeadLetter(String deadLetter) {
             this.deadLetter = deadLetter;
         }
+
+        public String getReceipt() {
+            return receipt;
+        }
+
+        public void setReceipt(String receipt) {
+            this.receipt = receipt;
+        }
+
+        public String getReceiptDeadLetter() {
+            return receiptDeadLetter;
+        }
+
+        public void setReceiptDeadLetter(String receiptDeadLetter) {
+            this.receiptDeadLetter = receiptDeadLetter;
+        }
     }
 
     public static class Queue {
         private String productSync;
         private String productSyncDlq;
+        private String stockDecrement;
+        private String stockDecrementDlq;
 
         public String getProductSync() {
             return productSync;
@@ -73,6 +93,22 @@ public class MessagingProperties {
         public void setProductSyncDlq(String productSyncDlq) {
             this.productSyncDlq = productSyncDlq;
         }
+
+        public String getStockDecrement() {
+            return stockDecrement;
+        }
+
+        public void setStockDecrement(String stockDecrement) {
+            this.stockDecrement = stockDecrement;
+        }
+
+        public String getStockDecrementDlq() {
+            return stockDecrementDlq;
+        }
+
+        public void setStockDecrementDlq(String stockDecrementDlq) {
+            this.stockDecrementDlq = stockDecrementDlq;
+        }
     }
 
     public static class RoutingKey {
@@ -83,6 +119,7 @@ public class MessagingProperties {
         private String categoryUpdated;
         private String categoryDeleted;
         private String productSyncDlq;
+        private String stockDecrementDlq;
 
         public String getProductCreated() {
             return productCreated;
@@ -138,6 +175,14 @@ public class MessagingProperties {
 
         public void setProductSyncDlq(String productSyncDlq) {
             this.productSyncDlq = productSyncDlq;
+        }
+
+        public String getStockDecrementDlq() {
+            return stockDecrementDlq;
+        }
+
+        public void setStockDecrementDlq(String stockDecrementDlq) {
+            this.stockDecrementDlq = stockDecrementDlq;
         }
     }
 

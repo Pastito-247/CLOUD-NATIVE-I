@@ -28,10 +28,22 @@ public class CatalogDeadLetterLogConsumer {
     public void onProductSyncDeadLetter(Message message,
                                         Channel channel,
                                         @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+        logDeadLetter("product-sync", message);
+        channel.basicAck(deliveryTag, false);
+    }
+
+    @RabbitListener(queues = "${messaging.queue.stock-decrement-dlq}")
+    public void onStockDecrementDeadLetter(Message message,
+                                           Channel channel,
+                                           @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+        logDeadLetter("stock.decrement", message);
+        channel.basicAck(deliveryTag, false);
+    }
+
+    private void logDeadLetter(String domain, Message message) {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         Object reason = message.getMessageProperties().getHeader("x-death");
-        log.error("[DLQ:product-sync] Mensaje no entregado registrado. motivo={} payload={}",
-                reason, body);
-        channel.basicAck(deliveryTag, false);
+        log.error("[DLQ:{}] Mensaje no entregado registrado. motivo={} payload={}",
+                domain, reason, body);
     }
 }

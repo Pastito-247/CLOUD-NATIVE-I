@@ -9,11 +9,14 @@ Navegador
 └── https://<API_ID>.execute-api.<REGION>.amazonaws.com   <- API Gateway (HTTPS)
   ├── /api/public/products   (sin JWT) -> EC2:8081 (products-service)
   ├── /api/public/categories (sin JWT) -> EC2:8082 (categories-service)
+  ├── /api/public/users/*    (sin JWT) -> EC2:8083 (users-service, registro)
   ├── /api/products/*        (JWT)     -> EC2:8081 (products-service)
   ├── /api/categories/*      (JWT)     -> EC2:8082 (categories-service)
   ├── /api/users/*           (JWT)     -> EC2:8083 (users-service)
   ├── /api/orders/*          (JWT)     -> EC2:8084 (orders-service)
-  └── /api/rabbit/*          (JWT admin) -> EC2:8085 (rabbitmq-admin-service)
+  ├── /api/rabbit/*          (JWT admin) -> EC2:8085 (rabbitmq-admin-service)
+  ├── /api/payments/*        (JWT)     -> EC2:8086 (payments-service)
+  └── /api/receipts/*        (JWT)     -> EC2:8086 (payments-service)
 ```
 
 El API Gateway da **HTTPS** gratis (sin comprar dominio ni Caddy) y valida los JWT
@@ -39,9 +42,9 @@ issuer y audience sin código extra.
 ## Prerrequisitos
 
 - El backend ya desplegado en el EC2 (**Fase 1-6 de `EC2_DEPLOYMENT.md`**):
-5 JARs corriendo en 8081-8085 con `systemd`.
+6 JARs corriendo en 8081-8086 con `systemd`.
 - Elastic IP asignada al EC2 (no cambia). Anota `TU_EC2_IP`.
-- Security group con 8081-8085 abiertos (ya configurado en la guía del EC2).
+- Security group con 8081-8086 abiertos (ya configurado en la guía del EC2).
 - Reemplazar `TU_EC2_IP` y `REGION` por tus valores reales.
 - El código del repo ya tiene las rutas públicas con alias `/api/public/**`
 (las agregamos en el commit `2d509fb`).
@@ -61,7 +64,7 @@ Debe responder JSON (no `Connection refused`). Si no responde, revisa primero
 `EC2_DEPLOYMENT.md` antes de seguir.
 
 > Si ya instalamos Caddy ponlo detrás solo cuando quieras ocultar los puertos;
-> para el API Gateway directo a los puertos 8081-8085 es suficiente.
+> para el API Gateway directo a los puertos 8081-8086 es suficiente.
 
 ---
 
@@ -69,7 +72,7 @@ Debe responder JSON (no `Connection refused`). Si no responde, revisa primero
 
 1. **AWS Console → API Gateway → Create API → HTTP API → Build**.
 2. En **Name** pon `tuki-api`.
-3. **Integrations** — agrega 7 integraciones tipo **HTTP** (una por recurso).
+3. **Integrations** — agrega 10 integraciones tipo **HTTP** (una por recurso).
 En el **Target** usa la URL completa con `{proxy}` para que el path llegue
 **entero** al backend (el prefijo se conserva):
 
@@ -77,11 +80,14 @@ En el **Target** usa la URL completa con `{proxy}` para que el path llegue
 |---|---|---|
 | `products-public` | `http://TU_EC2_IP:8081/api/public/products/{proxy}` | products |
 | `categories-public` | `http://TU_EC2_IP:8082/api/public/categories/{proxy}` | categories |
+| `users-public` | `http://TU_EC2_IP:8083/api/public/users/{proxy}` | users |
 | `products` | `http://TU_EC2_IP:8081/api/products/{proxy}` | products |
 | `categories` | `http://TU_EC2_IP:8082/api/categories/{proxy}` | categories |
 | `users` | `http://TU_EC2_IP:8083/api/users/{proxy}` | users |
 | `orders` | `http://TU_EC2_IP:8084/api/orders/{proxy}` | orders |
 | `rabbit` | `http://TU_EC2_IP:8085/api/rabbit/{proxy}` | rabbitmq-admin |
+| `payments` | `http://TU_EC2_IP:8086/api/payments/{proxy}` | payments |
+| `receipts` | `http://TU_EC2_IP:8086/api/receipts/{proxy}` | payments |
 
 > El `{proxy}` del target se llena con el resto del path de la ruta:
 > ruta `ANY /api/products/{proxy+}` + target `.../api/products/{proxy}`
@@ -101,6 +107,8 @@ En el **Target** usa la URL completa con `{proxy}` para que el path llegue
    | OPTIONS | `/api/public/products/{proxy+}` | `products-public` | (ninguno) |
    | OPTIONS | `/api/public/categories` | `categories-public-bare` | (ninguno) |
    | OPTIONS | `/api/public/categories/{proxy+}` | `categories-public` | (ninguno) |
+   | OPTIONS | `/api/public/users` | `users-public-bare` | (ninguno) |
+   | OPTIONS | `/api/public/users/{proxy+}` | `users-public` | (ninguno) |
    | OPTIONS | `/api/products` | `products-bare` | (ninguno) |
    | OPTIONS | `/api/products/{proxy+}` | `products` | (ninguno) |
    | OPTIONS | `/api/categories` | `categories-bare` | (ninguno) |
@@ -111,10 +119,16 @@ En el **Target** usa la URL completa con `{proxy}` para que el path llegue
    | OPTIONS | `/api/orders/{proxy+}` | `orders` | (ninguno) |
    | OPTIONS | `/api/rabbit` | `rabbit-bare` | (ninguno) |
    | OPTIONS | `/api/rabbit/{proxy+}` | `rabbit` | (ninguno) |
+   | OPTIONS | `/api/payments` | `payments-bare` | (ninguno) |
+   | OPTIONS | `/api/payments/{proxy+}` | `payments` | (ninguno) |
+   | OPTIONS | `/api/receipts` | `receipts-bare` | (ninguno) |
+   | OPTIONS | `/api/receipts/{proxy+}` | `receipts` | (ninguno) |
    | ANY | `/api/public/products` | `products-public-bare` | (ninguno) |
    | ANY | `/api/public/products/{proxy+}` | `products-public` | (ninguno) |
    | ANY | `/api/public/categories` | `categories-public-bare` | (ninguno) |
    | ANY | `/api/public/categories/{proxy+}` | `categories-public` | (ninguno) |
+   | ANY | `/api/public/users` | `users-public-bare` | (ninguno) |
+   | ANY | `/api/public/users/{proxy+}` | `users-public` | (ninguno) |
    | ANY | `/api/products` | `products-bare` | `tuki-jwt` |
    | ANY | `/api/products/{proxy+}` | `products` | `tuki-jwt` |
    | ANY | `/api/categories` | `categories-bare` | `tuki-jwt` |
@@ -125,13 +139,19 @@ En el **Target** usa la URL completa con `{proxy}` para que el path llegue
    | ANY | `/api/orders/{proxy+}` | `orders` | `tuki-jwt` |
    | ANY | `/api/rabbit` | `rabbit-bare` | `tuki-jwt` |
    | ANY | `/api/rabbit/{proxy+}` | `rabbit` | `tuki-jwt` |
+   | ANY | `/api/payments` | `payments-bare` | `tuki-jwt` |
+   | ANY | `/api/payments/{proxy+}` | `payments` | `tuki-jwt` |
+   | ANY | `/api/receipts` | `receipts-bare` | `tuki-jwt` |
+   | ANY | `/api/receipts/{proxy+}` | `receipts` | `tuki-jwt` |
 
    > **Integraciones `-bare`**: las rutas peladas (`/api/products` sin nada después)
    > NO pueden reusar las integraciones con `{proxy}`, porque el backend recibe
    > `/api/products/` (slash final) y Spring responde 401/404. Crea una
-   > integración **sin `{proxy}`** para cada recurso (ej. `products-bare` → URI
-   > `http://TU_EC2_IP:8081/api/products`, `rabbit-bare` → URI
-   > `http://TU_EC2_IP:8085/api/rabbit`).
+   > La integración **sin `{proxy}`** existe para el backend (ej. `products-bare` → URI
+   > `http://TU_EC2_IP:8081/api/products`, `users-public-bare` → URI
+   > `http://TU_EC2_IP:8083/api/public/users`, `payments-bare` → URI
+   > `http://TU_EC2_IP:8086/api/payments`, `receipts-bare` → URI
+   > `http://TU_EC2_IP:8086/api/receipts`).
 
    > Cada ruta debe tener **una integración asociada** (si está vacía devuelve
    > `404 {"message":"Not Found"}`). Las rutas `OPTIONS` explícitas ganan sobre
@@ -166,7 +186,7 @@ Anota esa URL (sin stage) — será tu `PROD_BACKEND_URL`.
 4. Guarda y **Re-deploy** (botón **Deploy** → stage `$default`).
 
 > El access token de la app SPA trae `aud: api://tuki-tech-api`, igual que el
-> `audiences` configurado en los 5 servicios (validación en ambas capas). Para
+> `audiences` configurado en los 6 servicios (validación en ambas capas). Para
 > `/api/rabbit/**` el backend exige además el **rol admin** (claim `roles`), que
 > el API Gateway no valida: lo verifica `SecurityConfig` de rabbitmq-admin-service.
 
@@ -214,7 +234,7 @@ agrega los headers CORS configurados en 4.1.
 
 Como el `OPTIONS` se reenvía al backend por la integración HTTP, el backend debe
 responder `200` a la preflight. Por eso **NO** se vacía `CORS_ALLOWED_ORIGINS` (a
-diferencia de versiones anteriores de esta guía). Por SSH en el EC2, en los 5
+diferencia de versiones anteriores de esta guía). Por SSH en el EC2, en los 6
 units:
 
 ```bash
@@ -228,12 +248,12 @@ Pega y guarda:
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 ```
 
-Haz lo mismo en `tuki-categories`, `tuki-users`, `tuki-orders` y
-`tuki-rabbit-admin`, luego:
+Haz lo mismo en `tuki-categories`, `tuki-users`, `tuki-orders`, `tuki-rabbit-admin`
+y `tuki-payments`, luego:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl restart tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin
+sudo systemctl restart tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin tuki-payments
 ```
 
 > El `SecurityConfig` de cada servicio usa un `CorsFilter` de Spring que
@@ -339,10 +359,12 @@ Para el curso no paga nada. Deja la API **eliminada** cuando termines si no la u
 |---|---|
 | `productsPublicUrl` | `{PROD_BACKEND_URL}/api/public/products` |
 | `categoriesPublicUrl` | `{PROD_BACKEND_URL}/api/public/categories` |
+| `usersPublicUrl` | `{PROD_BACKEND_URL}/api/public/users` |
 | `productsUrl` | `{PROD_BACKEND_URL}/api/products` |
 | `categoriesUrl` | `{PROD_BACKEND_URL}/api/categories` |
 | `usersUrl` | `{PROD_BACKEND_URL}/api/users` |
 | `ordersUrl` | `{PROD_BACKEND_URL}/api/orders` |
+| `paymentsUrl` | `{PROD_BACKEND_URL}/api/payments` |
 | `rabbitUrl` | `{PROD_BACKEND_URL}/api/rabbit` |
 
 - **Azur AD**: no cambia nada. El redirect URI sigue siendo la URL de GitHub

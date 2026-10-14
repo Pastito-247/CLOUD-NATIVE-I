@@ -1,0 +1,111 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: payments-service
+
+  # Database Configuration (H2 for local testing)
+  datasource:
+    url: jdbc:h2:mem:payments_db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  # Azure AD Configuration (JWT: issuer + audience)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
+          # Audiencia = claim 'aud' del access token de Entra. Entra puede emitir el
+          # Application ID URI (api://tuki-tech-api) o el Application (client) ID (GUID);
+          # se aceptan ambos. Debe coincidir con el JWT authorizer del API Gateway.
+          audiences: api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
+
+  # RabbitMQ (CloudAMQP / instancia existente). Overridable por variables de entorno.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    ssl:
+      enabled: ${RABBITMQ_SSL:false}
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
+        default-requeue-rejected: false
+
+# CORS Configuration
+cors:
+  allowed-origins: "http://localhost:4200,https://pastito-247.github.io"
+
+# ============================================================
+# Configuracion centralizada de mensajeria (RabbitMQ).
+# Unica fuente de verdad para nombres de exchanges, colas y
+# routing keys. Ningun nombre debe escribirse en el codigo de negocio.
+#
+# Topologia:
+#   payment.exchange (fanout)                                  [fase de pago]
+#     --o payment.notification.queue   -> users-service (aviso "pago en proceso")
+#     --o payment.screen.queue         -> payments-service (simula pago + genera boleta PDF)
+#   payment.dlx (direct) -> payment.notification.dlq / payment.screen.dlq
+#
+#   receipt.exchange (fanout)                                  [fase post-pago]
+#     --o receipt.email.queue          -> users-service (correo confirmacion + boleta)
+#     --o order.review.queue           -> orders-service (pedido para revision staff/admin)
+#     --o stock.decrement.queue        -> products-service (descuento de stock)
+#   receipt.dlx (direct) -> receipt.email.dlq / order.review.dlq / stock.decrement.dlq
+# ============================================================
+messaging:
+  exchange:
+    payment: payment.exchange
+    payment-dead-letter: payment.dlx
+    receipt: receipt.exchange
+    receipt-dead-letter: receipt.dlx
+  queue:
+    payment-notification: payment.notification.queue
+    payment-screen: payment.screen.queue
+    payment-notification-dlq: payment.notification.dlq
+    payment-screen-dlq: payment.screen.dlq
+    receipt-email: receipt.email.queue
+    order-review: order.review.queue
+    stock-decrement: stock.decrement.queue
+    receipt-email-dlq: receipt.email.dlq
+    order-review-dlq: order.review.dlq
+    stock-decrement-dlq: stock.decrement.dlq
+  routing-key:
+    payment-notification-dlq: payment.notification.dlq
+    payment-screen-dlq: payment.screen.dlq
+    receipt-email-dlq: receipt.email.dlq
+    order-review-dlq: order.review.dlq
+    stock-decrement-dlq: stock.decrement.dlq
+  # Simulacion del procesamiento de pago (sin pasarela real).
+  processing:
+    delay-ms: ${PAYMENT_DELAY_MS:3000}
+  # Generacion de la boleta PDF.
+  receipt:
+    storage-dir: ${RECEIPT_STORAGE_DIR:receipts}
+  retry:
+    max-attempts: 3
+    delay-ms: 500
+
+# Logging
+logging:
+  level:
+    com.ecommerce: INFO

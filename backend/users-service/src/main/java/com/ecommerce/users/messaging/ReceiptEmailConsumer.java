@@ -2,7 +2,7 @@ package com.ecommerce.users.messaging;
 
 import com.ecommerce.users.config.MessagingHeaders;
 import com.ecommerce.users.config.MessagingProperties;
-import com.ecommerce.users.event.OrderCreatedEvent;
+import com.ecommerce.users.event.ReceiptGeneratedEvent;
 import com.ecommerce.users.service.NotificationService;
 import com.rabbitmq.client.Channel;
 import org.slf4j.Logger;
@@ -17,22 +17,23 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 /**
- * Consumidor del dominio de notificaciones.
+ * Consumidor de la cola de correo de confirmacion + boleta.
  *
- * Escucha los pedidos creados, envia la notificacion y confirma el mensaje de
- * forma explicita. Ante un fallo reintenta republishing la cola y, agotados
- * los intentos, envia el mensaje a la DLQ mediante NACK sin requeue.
+ * Escucha {@code receipt.email.queue}, envia la confirmacion del pedido junto
+ * con la boleta y confirma el mensaje de forma explicita. Ante un fallo
+ * reintenta republicando la cola y, agotados los intentos, envia el mensaje a
+ * la DLQ mediante NACK sin requeue.
  */
 @Component
-public class NotificationConsumer {
+public class ReceiptEmailConsumer {
 
-    private static final Logger log = LoggerFactory.getLogger(NotificationConsumer.class);
+    private static final Logger log = LoggerFactory.getLogger(ReceiptEmailConsumer.class);
 
     private final NotificationService notificationService;
     private final RabbitTemplate rabbitTemplate;
     private final MessagingProperties props;
 
-    public NotificationConsumer(NotificationService notificationService,
+    public ReceiptEmailConsumer(NotificationService notificationService,
                                 RabbitTemplate rabbitTemplate,
                                 MessagingProperties props) {
         this.notificationService = notificationService;
@@ -40,40 +41,40 @@ public class NotificationConsumer {
         this.props = props;
     }
 
-    @RabbitListener(queues = "${messaging.queue.notification}")
-    public void handleOrderCreated(OrderCreatedEvent event,
-                                   Message message,
-                                   Channel channel,
-                                   @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+    @RabbitListener(queues = "${messaging.queue.receipt-email}")
+    public void handleReceiptGenerated(ReceiptGeneratedEvent event,
+                                       Message message,
+                                       Channel channel,
+                                       @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
 
         int attempts = resolveRetryCount(message);
         try {
-            notificationService.sendOrderNotification(event);
+            notificationService.sendOrderConfirmation(event);
             channel.basicAck(deliveryTag, false);
-            log.info("Pedido {} procesado: notificacion enviada (intento {})",
-                    event.orderId(), attempts + 1);
+            log.info("Boleta {} procesada: correo de confirmacion enviado (intento {})",
+                    event.receiptId(), attempts + 1);
 
         } catch (Exception ex) {
-            log.error("Fallo enviando la notificacion del pedido {} (intento {}): {}",
-                    event.orderId(), attempts + 1, ex.getMessage(), ex);
+            log.error("Fallo enviando la confirmacion de la boleta {} (intento {}): {}",
+                    event.receiptId(), attempts + 1, ex.getMessage(), ex);
 
             if (attempts < props.getRetry().getMaxAttempts()) {
                 sleepBetweenRetries();
                 republish(attempts + 1, event);
                 channel.basicAck(deliveryTag, false);
-                log.warn("Mensaje del pedido {} reencolado para reintento {}/{}",
-                        event.orderId(), attempts + 1, props.getRetry().getMaxAttempts());
+                log.warn("Mensaje de la boleta {} reencolado para reintento {}/{}",
+                        event.receiptId(), attempts + 1, props.getRetry().getMaxAttempts());
             } else {
-                log.error("Reintentos agotados para el pedido {}. Enviando a la DLQ '{}'",
-                        event.orderId(), props.getQueue().getNotificationDlq());
+                log.error("Reintentos agotados para la boleta {}. Enviando a la DLQ '{}'",
+                        event.receiptId(), props.getQueue().getReceiptEmailDlq());
                 // requeue=false -> el broker enruta el mensaje al dead-letter exchange.
                 channel.basicNack(deliveryTag, false, false);
             }
         }
     }
 
-    private void republish(int retryCount, OrderCreatedEvent event) {
-        rabbitTemplate.convertAndSend("", props.getQueue().getNotification(), event, m -> {
+    private void republish(int retryCount, ReceiptGeneratedEvent event) {
+        rabbitTemplate.convertAndSend("", props.getQueue().getReceiptEmail(), event, m -> {
             m.getMessageProperties().setHeader(MessagingHeaders.RETRY_COUNT, retryCount);
             return m;
         });

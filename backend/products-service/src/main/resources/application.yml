@@ -64,9 +64,14 @@ messaging:
   exchange:
     catalog: catalog.exchange
     dead-letter: catalog.dlx
+    # Exchange del flujo de pago: de aqui llega la cola de descuento de stock.
+    receipt: receipt.exchange
+    receipt-dead-letter: receipt.dlx
   queue:
     product-sync: product.sync.queue
     product-sync-dlq: product.sync.dlq
+    stock-decrement: stock.decrement.queue
+    stock-decrement-dlq: stock.decrement.dlq
   routing-key:
     product-created: product.created
     product-updated: product.updated
@@ -75,6 +80,7 @@ messaging:
     category-updated: category.updated
     category-deleted: category.deleted
     product-sync-dlq: product.sync.dlq
+    stock-decrement-dlq: stock.decrement.dlq
   retry:
     max-attempts: 3
     delay-ms: 500

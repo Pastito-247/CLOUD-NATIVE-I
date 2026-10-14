@@ -59,18 +59,41 @@ cors:
 # Configuracion centralizada de mensajeria (RabbitMQ).
 # Unica fuente de verdad para nombres de exchanges, colas y
 # routing keys. Debe coincidir con la topologia declarada por
-# orders-service (mismos nombres y argumentos).
+# payments-service (mismos nombres y argumentos).
+#
+# Este servicio consume:
+#   payment.notification.queue  (aviso "pago en proceso")
+#   receipt.email.queue         (correo confirmacion + boleta)
+#   order.created.queue         (aviso "pedido recibido")     <- order.exchange
+#   user.registered.queue       (correo de bienvenida)        <- user.exchange
+#
+# Y produce (desacopla el alta del envio de bienvenida):
+#   user.registered             -> user.exchange
 # ============================================================
 messaging:
   exchange:
-    orders: orders.exchange
-    dead-letter: orders.dlx
+    payment: payment.exchange
+    payment-dead-letter: payment.dlx
+    receipt: receipt.exchange
+    receipt-dead-letter: receipt.dlx
+    order: order.exchange
+    order-dead-letter: order.dlx
+    user: user.exchange
+    user-dead-letter: user.dlx
   queue:
-    notification: order.notification.queue
-    notification-dlq: order.notification.dlq
+    payment-notification: payment.notification.queue
+    payment-notification-dlq: payment.notification.dlq
+    receipt-email: receipt.email.queue
+    receipt-email-dlq: receipt.email.dlq
+    order-created: order.created.queue
+    order-created-dlq: order.created.dlq
+    user-registered: user.registered.queue
+    user-registered-dlq: user.registered.dlq
   routing-key:
-    order-created: order.created
-    notification-dlq: order.notification.dlq
+    payment-notification-dlq: payment.notification.dlq
+    receipt-email-dlq: receipt.email.dlq
+    order-created-dlq: order.created.dlq
+    user-registered-dlq: user.registered.dlq
   retry:
     max-attempts: 3
     delay-ms: 500

@@ -4,6 +4,7 @@ import { MsalGuard } from '@azure/msal-angular';
 import { AdminRoleGuard } from './auth/admin-role.guard';
 import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
+import { RegisterComponent } from './register/register.component';
 import { AdminComponent } from './admin/admin.component';
 import { MyOrdersComponent } from './my-orders/my-orders.component';
 import { RabbitmqAdminComponent } from './rabbitmq-admin/rabbitmq-admin.component';
@@ -11,6 +12,7 @@ import { RabbitmqAdminComponent } from './rabbitmq-admin/rabbitmq-admin.componen
 const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
+  { path: 'register', component: RegisterComponent },
   // Requiere estar autenticado (cualquier usuario de Azure AD)
   {
     path: 'my-orders',

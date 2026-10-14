@@ -37,6 +37,7 @@ export class AppComponent implements OnInit, OnDestroy {
   cartCount = 0;
   cartOpen = false;
   shippingAddress = '';
+  paymentMethod = 'CARD';
   cartMessage = '';
   cartMessageIsError = false;
   checkoutLoading = false;
@@ -247,27 +248,68 @@ export class AppComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.cartItems.length === 0) {
+      this.cartMessage = 'Tu carrito está vacío.';
+      this.cartMessageIsError = true;
+      return;
+    }
+
     this.checkoutLoading = true;
+
+    const items = this.cartService.getItems().map(item => ({
+      productId: item.product.id,
+      productName: item.product.name,
+      quantity: item.quantity,
+      unitPrice: item.product.price
+    }));
+    const total = this.getCartTotal();
 
     const order = {
       userEmail: this.userEmail,
-      total: this.getCartTotal(),
+      total: total,
       shippingAddress: this.shippingAddress.trim(),
       status: 'PENDING'
     };
 
-    this.http.post(environment.ordersUrl, order).subscribe({
-      next: () => {
-        this.cartService.clearCart();
-        this.shippingAddress = '';
-        this.checkoutLoading = false;
-        this.cartMessage = '¡Compra realizada con éxito! Pronto la procesaremos.';
-        this.cartMessageIsError = false;
+    // 1) Crea el pedido en orders-service (publica order.created -> users).
+    this.http.post<any>(environment.ordersUrl, order).subscribe({
+      next: (createdOrder) => {
+        // 2) Registra el pago en payments-service (dispara el flujo asincrono
+        //    payment.requested -> notificacion + simulacion/boleta).
+        this.payOrder(createdOrder?.id, total, items);
       },
       error: (error) => {
         console.error('Error creating order:', error);
         this.checkoutLoading = false;
         this.cartMessage = 'No se pudo realizar la compra. Intenta de nuevo.';
+        this.cartMessageIsError = true;
+      }
+    });
+  }
+
+  private payOrder(orderId: number, total: number, items: any[]): void {
+    const payment = {
+      orderId: orderId,
+      userEmail: this.userEmail,
+      amount: total,
+      method: this.paymentMethod,
+      shippingAddress: this.shippingAddress.trim(),
+      items: items
+    };
+
+    this.http.post(environment.paymentsUrl, payment).subscribe({
+      next: () => {
+        this.cartService.clearCart();
+        this.shippingAddress = '';
+        this.checkoutLoading = false;
+        this.cartMessage = '¡Compra realizada! Estamos procesando tu pago.';
+        this.cartMessageIsError = false;
+      },
+      error: (error) => {
+        console.error('Error creating payment:', error);
+        this.checkoutLoading = false;
+        this.cartMessage =
+          'Tu pedido fue creado, pero el pago no pudo iniciarse. Revísalo en "Mis compras".';
         this.cartMessageIsError = true;
       }
     });

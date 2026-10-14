@@ -8,6 +8,7 @@
 #   .\scripts\run-backend.ps1 rabbitmq-admin-service
 #   .\scripts\run-backend.ps1 products-service
 #   .\scripts\run-backend.ps1 categories-service
+#   .\scripts\run-backend.ps1 payments-service
 # ============================================================
 param(
     [Parameter(Mandatory = $true)]
@@ -38,7 +39,7 @@ if (Test-Path -LiteralPath $envFile) {
 
 $pom = Join-Path $root "backend\$Service\pom.xml"
 if (-not (Test-Path -LiteralPath $pom)) {
-    Write-Error "No existe backend\$Service. Servicios validos: products-service, categories-service, users-service, orders-service, rabbitmq-admin-service"
+    Write-Error "No existe backend\$Service. Servicios validos: products-service, categories-service, users-service, orders-service, payments-service, rabbitmq-admin-service"
     exit 1
 }
 

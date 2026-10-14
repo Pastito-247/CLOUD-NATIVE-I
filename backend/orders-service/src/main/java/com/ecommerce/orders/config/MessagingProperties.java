@@ -3,9 +3,9 @@ package com.ecommerce.orders.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Configuracion centralizada de mensajeria.
+ * Configuracion centralizada de mensajeria para el dominio de pedidos.
  *
- * Todos los nombres de exchanges, colas y routing keys se leen desde
+ * Los nombres de exchanges, colas y routing keys se leen desde
  * application.yml (seccion {@code messaging}). Ningun nombre debe quedar
  * escrito directamente en la logica de negocio.
  */
@@ -34,69 +34,65 @@ public class MessagingProperties {
     }
 
     public static class Exchange {
-        private String orders;
-        private String deadLetter;
+        private String receipt;
+        private String receiptDeadLetter;
+        private String order;
+        private String orderDeadLetter;
 
-        public String getOrders() {
-            return orders;
+        public String getReceipt() {
+            return receipt;
         }
 
-        public void setOrders(String orders) {
-            this.orders = orders;
+        public void setReceipt(String receipt) {
+            this.receipt = receipt;
         }
 
-        public String getDeadLetter() {
-            return deadLetter;
+        public String getReceiptDeadLetter() {
+            return receiptDeadLetter;
         }
 
-        public void setDeadLetter(String deadLetter) {
-            this.deadLetter = deadLetter;
+        public void setReceiptDeadLetter(String receiptDeadLetter) {
+            this.receiptDeadLetter = receiptDeadLetter;
+        }
+
+        public String getOrder() {
+            return order;
+        }
+
+        public void setOrder(String order) {
+            this.order = order;
+        }
+
+        public String getOrderDeadLetter() {
+            return orderDeadLetter;
+        }
+
+        public void setOrderDeadLetter(String orderDeadLetter) {
+            this.orderDeadLetter = orderDeadLetter;
         }
     }
 
     public static class Queue {
-        private String notification;
-        private String ticket;
-        private String notificationDlq;
-        private String ticketDlq;
-
-        public String getNotification() {
-            return notification;
-        }
-
-        public void setNotification(String notification) {
-            this.notification = notification;
-        }
-
-        public String getTicket() {
-            return ticket;
-        }
-
-        public void setTicket(String ticket) {
-            this.ticket = ticket;
-        }
-
-        public String getNotificationDlq() {
-            return notificationDlq;
-        }
-
-        public void setNotificationDlq(String notificationDlq) {
-            this.notificationDlq = notificationDlq;
-        }
-
-        public String getTicketDlq() {
-            return ticketDlq;
-        }
-
-        public void setTicketDlq(String ticketDlq) {
-            this.ticketDlq = ticketDlq;
-        }
-    }
-
-    public static class RoutingKey {
+        private String orderReview;
+        private String orderReviewDlq;
         private String orderCreated;
-        private String notificationDlq;
-        private String ticketDlq;
+        private String orderCreatedDlq;
+
+        public String getOrderReview() {
+            return orderReview;
+        }
+
+        public void setOrderReview(String orderReview) {
+            this.orderReview = orderReview;
+        }
+
+        public String getOrderReviewDlq() {
+            return orderReviewDlq;
+        }
+
+        public void setOrderReviewDlq(String orderReviewDlq) {
+            this.orderReviewDlq = orderReviewDlq;
+        }
 
         public String getOrderCreated() {
             return orderCreated;
@@ -106,20 +102,33 @@ public class MessagingProperties {
             this.orderCreated = orderCreated;
         }
 
-        public String getNotificationDlq() {
-            return notificationDlq;
+        public String getOrderCreatedDlq() {
+            return orderCreatedDlq;
         }
 
-        public void setNotificationDlq(String notificationDlq) {
-            this.notificationDlq = notificationDlq;
+        public void setOrderCreatedDlq(String orderCreatedDlq) {
+            this.orderCreatedDlq = orderCreatedDlq;
+        }
+    }
+
+    public static class RoutingKey {
+        private String orderReviewDlq;
+        private String orderCreatedDlq;
+
+        public String getOrderReviewDlq() {
+            return orderReviewDlq;
         }
 
-        public String getTicketDlq() {
-            return ticketDlq;
+        public void setOrderReviewDlq(String orderReviewDlq) {
+            this.orderReviewDlq = orderReviewDlq;
         }
 
-        public void setTicketDlq(String ticketDlq) {
-            this.ticketDlq = ticketDlq;
+        public String getOrderCreatedDlq() {
+            return orderCreatedDlq;
+        }
+
+        public void setOrderCreatedDlq(String orderCreatedDlq) {
+            this.orderCreatedDlq = orderCreatedDlq;
         }
     }
 

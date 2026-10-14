@@ -13,22 +13,53 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Consumidor de la Dead Letter Queue de notificaciones. Registra en el log
- * los mensajes no entregados y los confirma para no bloquear la cola.
+ * Consumidor de las Dead Letter Queues del dominio de notificaciones.
+ *
+ * Los mensajes que agotan sus reintentos o son rechazados terminan aqui.
+ * Se registran en el log (con el motivo del rechazo, si RabbitMQ lo aporta)
+ * y se confirman para no quedar atascados en la cola.
  */
 @Component
 public class DeadLetterLogConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(DeadLetterLogConsumer.class);
 
-    @RabbitListener(queues = "${messaging.queue.notification-dlq}")
-    public void onNotificationDeadLetter(Message message,
+    @RabbitListener(queues = "${messaging.queue.payment-notification-dlq}")
+    public void onPaymentNotificationDeadLetter(Message message,
+                                                Channel channel,
+                                                @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+        logDeadLetter("payment.notification", message);
+        channel.basicAck(deliveryTag, false);
+    }
+
+    @RabbitListener(queues = "${messaging.queue.receipt-email-dlq}")
+    public void onReceiptEmailDeadLetter(Message message,
                                          Channel channel,
                                          @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+        logDeadLetter("receipt.email", message);
+        channel.basicAck(deliveryTag, false);
+    }
+
+    @RabbitListener(queues = "${messaging.queue.order-created-dlq}")
+    public void onOrderCreatedDeadLetter(Message message,
+                                         Channel channel,
+                                         @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+        logDeadLetter("order.created", message);
+        channel.basicAck(deliveryTag, false);
+    }
+
+    @RabbitListener(queues = "${messaging.queue.user-registered-dlq}")
+    public void onUserRegisteredDeadLetter(Message message,
+                                           Channel channel,
+                                           @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+        logDeadLetter("user.registered", message);
+        channel.basicAck(deliveryTag, false);
+    }
+
+    private void logDeadLetter(String domain, Message message) {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         Object reason = message.getMessageProperties().getHeader("x-death");
-        log.error("[DLQ:notification] Mensaje no entregado registrado. motivo={} payload={}",
-                reason, body);
-        channel.basicAck(deliveryTag, false);
+        log.error("[DLQ:{}] Mensaje no entregado registrado. motivo={} payload={}",
+                domain, reason, body);
     }
 }

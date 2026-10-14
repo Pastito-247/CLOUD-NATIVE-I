@@ -37,16 +37,12 @@ public class OrderService {
     
     public Order createOrder(Order order) {
         Order saved = orderRepository.save(order);
-
-        // Notifica de forma asincrona la creacion del pedido (notificacion + ticket).
         orderEventPublisher.publishOrderCreated(new OrderCreatedEvent(
                 saved.getId(),
                 saved.getUserEmail(),
                 saved.getTotal(),
-                saved.getStatus(),
                 saved.getShippingAddress(),
                 saved.getCreatedAt()));
-
         return saved;
     }
     

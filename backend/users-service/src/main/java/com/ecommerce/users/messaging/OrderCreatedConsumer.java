@@ -1,9 +1,9 @@
-package com.ecommerce.orders.messaging;
+package com.ecommerce.users.messaging;
 
-import com.ecommerce.orders.config.MessagingHeaders;
-import com.ecommerce.orders.config.MessagingProperties;
-import com.ecommerce.orders.event.OrderCreatedEvent;
-import com.ecommerce.orders.service.TicketService;
+import com.ecommerce.users.config.MessagingHeaders;
+import com.ecommerce.users.config.MessagingProperties;
+import com.ecommerce.users.event.OrderCreatedEvent;
+import com.ecommerce.users.service.NotificationService;
 import com.rabbitmq.client.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,31 +16,31 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 /**
- * Consumidor del dominio de documentos/tickets.
+ * Consumidor de la cola de pedidos creados.
  *
- * Escucha la cola de tickets, genera el ticket del pedido y confirma el
- * mensaje de forma explicita. Si el procesamiento falla:
- *   - reintenta republicando el mensaje (hasta max-attempts), o
- *   - lo envia a la DLQ mediante NACK sin requeue (lo captura orders.dlx).
+ * Escucha {@code order.created.queue} (publicada por orders-service en
+ * {@code order.exchange}) y genera el aviso "pedido recibido". Confirma el
+ * mensaje explicitamente; ante un fallo reintenta republicando la cola y,
+ * agotados los intentos, envia el mensaje a la DLQ mediante NACK sin requeue.
  */
 @Component
-public class TicketGenerationConsumer {
+public class OrderCreatedConsumer {
 
-    private static final Logger log = LoggerFactory.getLogger(TicketGenerationConsumer.class);
+    private static final Logger log = LoggerFactory.getLogger(OrderCreatedConsumer.class);
 
-    private final TicketService ticketService;
-    private final OrderEventPublisher publisher;
+    private final NotificationService notificationService;
+    private final UserEventPublisher publisher;
     private final MessagingProperties props;
 
-    public TicketGenerationConsumer(TicketService ticketService,
-                                    OrderEventPublisher publisher,
-                                    MessagingProperties props) {
-        this.ticketService = ticketService;
+    public OrderCreatedConsumer(NotificationService notificationService,
+                                UserEventPublisher publisher,
+                                MessagingProperties props) {
+        this.notificationService = notificationService;
         this.publisher = publisher;
         this.props = props;
     }
 
-    @RabbitListener(queues = "${messaging.queue.ticket}")
+    @RabbitListener(queues = "${messaging.queue.order-created}")
     public void handleOrderCreated(OrderCreatedEvent event,
                                    Message message,
                                    Channel channel,
@@ -48,24 +48,24 @@ public class TicketGenerationConsumer {
 
         int attempts = resolveRetryCount(message);
         try {
-            ticketService.generateTicket(event);
+            notificationService.sendOrderReceivedNotification(event);
             channel.basicAck(deliveryTag, false);
-            log.info("Pedido {} procesado: ticket generado (intento {})",
+            log.info("Pedido {} procesado: aviso de pedido recibido enviado (intento {})",
                     event.orderId(), attempts + 1);
 
         } catch (Exception ex) {
-            log.error("Fallo generando el ticket del pedido {} (intento {}): {}",
+            log.error("Fallo avisando el pedido {} (intento {}): {}",
                     event.orderId(), attempts + 1, ex.getMessage(), ex);
 
             if (attempts < props.getRetry().getMaxAttempts()) {
                 sleepBetweenRetries();
-                publisher.republishToQueue(props.getQueue().getTicket(), event, attempts + 1);
+                publisher.republishToQueue(props.getQueue().getOrderCreated(), event, attempts + 1);
                 channel.basicAck(deliveryTag, false);
                 log.warn("Mensaje del pedido {} reencolado para reintento {}/{}",
                         event.orderId(), attempts + 1, props.getRetry().getMaxAttempts());
             } else {
                 log.error("Reintentos agotados para el pedido {}. Enviando a la DLQ '{}'",
-                        event.orderId(), props.getQueue().getTicketDlq());
+                        event.orderId(), props.getQueue().getOrderCreatedDlq());
                 // requeue=false -> el broker enruta el mensaje al dead-letter exchange.
                 channel.basicNack(deliveryTag, false, false);
             }

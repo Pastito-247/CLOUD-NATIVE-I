@@ -144,6 +144,19 @@
   border-color: #f87171;
 }
 
+.nav-register {
+  background: transparent;
+  color: #eafff2;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  text-decoration: none;
+}
+
+.nav-register:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #86efac;
+  color: #ffffff;
+}
+
 /* Hamburguesa */
 .hamburger {
   display: none;

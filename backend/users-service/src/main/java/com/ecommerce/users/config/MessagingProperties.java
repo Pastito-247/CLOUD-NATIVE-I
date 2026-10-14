@@ -31,50 +31,121 @@ public class MessagingProperties {
     }
 
     public static class Exchange {
-        private String orders;
-        private String deadLetter;
+        private String payment;
+        private String paymentDeadLetter;
+        private String receipt;
+        private String receiptDeadLetter;
+        private String order;
+        private String orderDeadLetter;
+        private String user;
+        private String userDeadLetter;
 
-        public String getOrders() {
-            return orders;
+        public String getPayment() {
+            return payment;
         }
 
-        public void setOrders(String orders) {
-            this.orders = orders;
+        public void setPayment(String payment) {
+            this.payment = payment;
         }
 
-        public String getDeadLetter() {
-            return deadLetter;
+        public String getPaymentDeadLetter() {
+            return paymentDeadLetter;
         }
 
-        public void setDeadLetter(String deadLetter) {
-            this.deadLetter = deadLetter;
+        public void setPaymentDeadLetter(String paymentDeadLetter) {
+            this.paymentDeadLetter = paymentDeadLetter;
+        }
+
+        public String getReceipt() {
+            return receipt;
+        }
+
+        public void setReceipt(String receipt) {
+            this.receipt = receipt;
+        }
+
+        public String getReceiptDeadLetter() {
+            return receiptDeadLetter;
+        }
+
+        public void setReceiptDeadLetter(String receiptDeadLetter) {
+            this.receiptDeadLetter = receiptDeadLetter;
+        }
+
+        public String getOrder() {
+            return order;
+        }
+
+        public void setOrder(String order) {
+            this.order = order;
+        }
+
+        public String getOrderDeadLetter() {
+            return orderDeadLetter;
+        }
+
+        public void setOrderDeadLetter(String orderDeadLetter) {
+            this.orderDeadLetter = orderDeadLetter;
+        }
+
+        public String getUser() {
+            return user;
+        }
+
+        public void setUser(String user) {
+            this.user = user;
+        }
+
+        public String getUserDeadLetter() {
+            return userDeadLetter;
+        }
+
+        public void setUserDeadLetter(String userDeadLetter) {
+            this.userDeadLetter = userDeadLetter;
         }
     }
 
     public static class Queue {
-        private String notification;
-        private String notificationDlq;
-
-        public String getNotification() {
-            return notification;
-        }
-
-        public void setNotification(String notification) {
-            this.notification = notification;
-        }
-
-        public String getNotificationDlq() {
-            return notificationDlq;
-        }
-
-        public void setNotificationDlq(String notificationDlq) {
-            this.notificationDlq = notificationDlq;
-        }
-    }
-
-    public static class RoutingKey {
+        private String paymentNotification;
+        private String paymentNotificationDlq;
+        private String receiptEmail;
+        private String receiptEmailDlq;
         private String orderCreated;
-        private String notificationDlq;
+        private String orderCreatedDlq;
+        private String userRegistered;
+        private String userRegisteredDlq;
+
+        public String getPaymentNotification() {
+            return paymentNotification;
+        }
+
+        public void setPaymentNotification(String paymentNotification) {
+            this.paymentNotification = paymentNotification;
+        }
+
+        public String getPaymentNotificationDlq() {
+            return paymentNotificationDlq;
+        }
+
+        public void setPaymentNotificationDlq(String paymentNotificationDlq) {
+            this.paymentNotificationDlq = paymentNotificationDlq;
+        }
+
+        public String getReceiptEmail() {
+            return receiptEmail;
+        }
+
+        public void setReceiptEmail(String receiptEmail) {
+            this.receiptEmail = receiptEmail;
+        }
+
+        public String getReceiptEmailDlq() {
+            return receiptEmailDlq;
+        }
+
+        public void setReceiptEmailDlq(String receiptEmailDlq) {
+            this.receiptEmailDlq = receiptEmailDlq;
+        }
 
         public String getOrderCreated() {
             return orderCreated;
@@ -84,12 +155,67 @@ public class MessagingProperties {
             this.orderCreated = orderCreated;
         }
 
-        public String getNotificationDlq() {
-            return notificationDlq;
+        public String getOrderCreatedDlq() {
+            return orderCreatedDlq;
         }
 
-        public void setNotificationDlq(String notificationDlq) {
-            this.notificationDlq = notificationDlq;
+        public void setOrderCreatedDlq(String orderCreatedDlq) {
+            this.orderCreatedDlq = orderCreatedDlq;
+        }
+
+        public String getUserRegistered() {
+            return userRegistered;
+        }
+
+        public void setUserRegistered(String userRegistered) {
+            this.userRegistered = userRegistered;
+        }
+
+        public String getUserRegisteredDlq() {
+            return userRegisteredDlq;
+        }
+
+        public void setUserRegisteredDlq(String userRegisteredDlq) {
+            this.userRegisteredDlq = userRegisteredDlq;
+        }
+    }
+
+    public static class RoutingKey {
+        private String paymentNotificationDlq;
+        private String receiptEmailDlq;
+        private String orderCreatedDlq;
+        private String userRegisteredDlq;
+
+        public String getPaymentNotificationDlq() {
+            return paymentNotificationDlq;
+        }
+
+        public void setPaymentNotificationDlq(String paymentNotificationDlq) {
+            this.paymentNotificationDlq = paymentNotificationDlq;
+        }
+
+        public String getReceiptEmailDlq() {
+            return receiptEmailDlq;
+        }
+
+        public void setReceiptEmailDlq(String receiptEmailDlq) {
+            this.receiptEmailDlq = receiptEmailDlq;
+        }
+
+        public String getOrderCreatedDlq() {
+            return orderCreatedDlq;
+        }
+
+        public void setOrderCreatedDlq(String orderCreatedDlq) {
+            this.orderCreatedDlq = orderCreatedDlq;
+        }
+
+        public String getUserRegisteredDlq() {
+            return userRegisteredDlq;
+        }
+
+        public void setUserRegisteredDlq(String userRegisteredDlq) {
+            this.userRegisteredDlq = userRegisteredDlq;
         }
     }
 
