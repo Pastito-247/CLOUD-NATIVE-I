@@ -6,7 +6,8 @@ import { environment } from '../../environments/environment';
  * Registro de cuentas desde la pagina.
  *
  * Llama al endpoint publico del users-service (no requiere JWT), que crea el
- * perfil y publica user.registered para generar el correo de bienvenida.
+ * perfil con contrasena (BCrypt) y publica user.registered para generar el
+ * correo de bienvenida.
  */
 @Component({
   selector: 'app-register',
@@ -17,6 +18,7 @@ export class RegisterComponent {
 
   name = '';
   email = '';
+  password = '';
   role = 'customer';
 
   loading = false;
@@ -30,7 +32,12 @@ export class RegisterComponent {
     this.successMessage = '';
 
     if (!this.name.trim() || !this.email.trim()) {
-      this.errorMessage = 'Nombre y email son obligatorios.';
+      this.errorMessage = 'Completa tu nombre y tu email.';
+      return;
+    }
+
+    if (!this.password || this.password.length < 6) {
+      this.errorMessage = 'La contraseña debe tener al menos 6 caracteres.';
       return;
     }
 
@@ -39,16 +46,18 @@ export class RegisterComponent {
     const body = {
       name: this.name.trim(),
       email: this.email.trim(),
+      password: this.password,
       role: this.role
     };
 
     this.http.post<any>(`${environment.usersPublicUrl}/register`, body).subscribe({
-      next: (user) => {
+      next: () => {
         this.loading = false;
         this.successMessage =
-          `Cuenta creada: ${user.email}. Te enviamos un correo de bienvenida.`;
+          'Cuenta creada. Ya puedes iniciar sesión con tu email y contraseña.';
         this.name = '';
         this.email = '';
+        this.password = '';
         this.role = 'customer';
       },
       error: (error) => {

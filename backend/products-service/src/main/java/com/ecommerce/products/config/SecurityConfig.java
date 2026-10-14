@@ -1,5 +1,7 @@
 package com.ecommerce.products.config;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jwt.SignedJWT;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +12,7 @@ import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
@@ -21,6 +24,10 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -34,6 +41,12 @@ public class SecurityConfig {
 
     @Value("${spring.security.oauth2.resourceserver.jwt.audiences}")
     private String audiences;
+
+    @Value("${app.security.local-jwt.issuer}")
+    private String localIssuer;
+
+    @Value("${app.security.local-jwt.secret}")
+    private String localSecret;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -64,17 +77,45 @@ public class SecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        NimbusJwtDecoder decoder =
+        // Token de Azure AD (RS256, validado contra el issuer remoto).
+        NimbusJwtDecoder azureDecoder =
             NimbusJwtDecoder.withIssuerLocation(issuerUri).build();
-
-        OAuth2TokenValidator<Jwt> withAudience =
+        azureDecoder.setJwtValidator(
             new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefault(),
                 audienceValidator()
-            );
+            )
+        );
 
-        decoder.setJwtValidator(withAudience);
-        return decoder;
+        // Token local emitido por users-service (HS256, secreto compartido).
+        NimbusJwtDecoder localDecoder =
+            NimbusJwtDecoder.withSecretKey(localSecretKey())
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+        localDecoder.setJwtValidator(
+            new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(localIssuer),
+                audienceValidator()
+            )
+        );
+
+        // Se enruta segun el algoritmo de firma: HS256 = local, RS256 = Azure AD.
+        return token -> isLocalToken(token)
+            ? localDecoder.decode(token)
+            : azureDecoder.decode(token);
+    }
+
+    private SecretKey localSecretKey() {
+        return new SecretKeySpec(localSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+    }
+
+    static boolean isLocalToken(String token) {
+        try {
+            SignedJWT signed = SignedJWT.parse(token);
+            return JWSAlgorithm.HS256.equals(signed.getHeader().getAlgorithm());
+        } catch (ParseException ex) {
+            return false;
+        }
     }
 
     private OAuth2TokenValidator<Jwt> audienceValidator() {

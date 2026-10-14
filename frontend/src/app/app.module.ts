@@ -14,8 +14,6 @@ import { RabbitmqAdminComponent } from './rabbitmq-admin/rabbitmq-admin.componen
 
 import {
   MsalModule,
-  MsalInterceptor,
-  MsalGuard,
   MsalBroadcastService,
   MsalService
 } from '@azure/msal-angular';
@@ -32,6 +30,7 @@ import type {
 } from '@azure/msal-angular';
 
 import { environment } from '../environments/environment';
+import { AuthInterceptor } from './auth/auth.interceptor';
 
 const msalInstance = new PublicClientApplication({
   auth: {
@@ -62,11 +61,9 @@ const msalGuardConfig: MsalGuardConfiguration = {
 };
 
 /*
- * Las peticiones normales de Home/API no deben provocar
- * una redirección completa de la página.
- *
- * Si hace falta obtener un token para una API protegida,
- * MSAL utilizará un popup.
+ * MsalModule.forRoot exige una config de interceptor aunque no usemos el
+ * MsalInterceptor (lo reemplazamos por AuthInterceptor para soportar tambien
+ * el login local). El mapa de recursos se mantiene por compatibilidad.
  */
 const msalInterceptorConfig: MsalInterceptorConfiguration = {
   interactionType: InteractionType.Popup,
@@ -107,12 +104,11 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
 
   providers: [
     MsalService,
-    MsalGuard,
     MsalBroadcastService,
 
     {
       provide: HTTP_INTERCEPTORS,
-      useClass: MsalInterceptor,
+      useClass: AuthInterceptor,
       multi: true
     }
   ],

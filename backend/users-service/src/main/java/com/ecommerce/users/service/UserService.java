@@ -3,11 +3,13 @@ package com.ecommerce.users.service;
 import com.ecommerce.users.dto.RegisterRequest;
 import com.ecommerce.users.event.UserRegisteredEvent;
 import com.ecommerce.users.exception.DuplicateEmailException;
+import com.ecommerce.users.exception.InvalidCredentialsException;
 import com.ecommerce.users.messaging.UserEventPublisher;
 import com.ecommerce.users.model.User;
 import com.ecommerce.users.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,11 +25,14 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserEventPublisher userEventPublisher;
+    private final PasswordEncoder passwordEncoder;
 
     public UserService(UserRepository userRepository,
-                       UserEventPublisher userEventPublisher) {
+                       UserEventPublisher userEventPublisher,
+                       PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.userEventPublisher = userEventPublisher;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<User> getAllUsers() {
@@ -62,6 +67,7 @@ public class UserService {
                 : request.role().trim().toLowerCase();
 
         User user = new User(email, request.name().trim(), role);
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
         User saved = userRepository.save(user);
         log.info("Cuenta registrada id={} email={} rol={}", saved.getId(), email, role);
 
@@ -73,6 +79,23 @@ public class UserService {
                 LocalDateTime.now()));
 
         return saved;
+    }
+
+    /**
+     * Autentica una cuenta local (email + contrasena). Lanza
+     * {@link InvalidCredentialsException} si el email no existe o la contrasena
+     * no coincide, sin revelar cual de los dos fallo.
+     */
+    public User authenticate(String email, String rawPassword) {
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(InvalidCredentialsException::new);
+
+        if (user.getPasswordHash() == null
+                || !passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+        return user;
     }
 
     public User updateUser(Long id, User userDetails) {

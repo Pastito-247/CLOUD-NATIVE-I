@@ -51,7 +51,8 @@ export interface BindingInfo {
 
 /**
  * Cliente Angular del microservicio rabbitmq-admin-service.
- * Todas las llamadas viajan con el JWT que inyecta MsalInterceptor.
+ * Todas las llamadas viajan con el JWT que inyecta AuthInterceptor
+ * (token de la cuenta local o de Microsoft).
  */
 @Injectable({ providedIn: 'root' })
 export class RabbitmqAdminService {
