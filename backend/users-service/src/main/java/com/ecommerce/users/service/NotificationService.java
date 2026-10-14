@@ -1,6 +1,9 @@
 package com.ecommerce.users.service;
 
 import com.ecommerce.users.event.OrderCreatedEvent;
+import com.ecommerce.users.event.PaymentRequestedEvent;
+import com.ecommerce.users.event.ReceiptGeneratedEvent;
+import com.ecommerce.users.event.UserRegisteredEvent;
 import com.ecommerce.users.model.Notification;
 import com.ecommerce.users.repository.NotificationRepository;
 import org.slf4j.Logger;
@@ -9,10 +12,10 @@ import org.springframework.stereotype.Service;
 
 /**
  * Logica de negocio de notificaciones. No conoce RabbitMQ: es invocada desde
- * el consumidor.
+ * los consumidores.
  *
  * Para poder demostrar la ruta de error (reintentos y DLQ) en la presentacion,
- * cualquier pedido cuyo correo empiece con "fail@" provoca un fallo simulado.
+ * cualquier evento cuyo correo empiece con "fail@" provoca un fallo simulado.
  */
 @Service
 public class NotificationService {
@@ -25,24 +28,97 @@ public class NotificationService {
         this.notificationRepository = notificationRepository;
     }
 
-    public Notification sendOrderNotification(OrderCreatedEvent event) {
-        if (event == null || event.orderId() == null) {
-            throw new IllegalArgumentException("Evento de pedido invalido: sin orderId");
+    /**
+     * Aviso de que el pago esta siendo procesado (fase 1 del flujo de pago).
+     */
+    public Notification sendPaymentProcessingNotification(PaymentRequestedEvent event) {
+        if (event == null || event.paymentId() == null) {
+            throw new IllegalArgumentException("Evento de pago invalido: sin paymentId");
         }
-        if (event.userEmail() != null && event.userEmail().startsWith("fail@")) {
-            throw new IllegalStateException(
-                    "Fallo simulado al notificar el pedido " + event.orderId());
-        }
+        failIfRequested(event.userEmail(), "notificar el pago " + event.paymentId());
 
-        String subject = "Confirmacion de tu pedido #" + event.orderId();
-        String message = "Hola, recibimos tu pedido #%d por un total de $%s. Gracias por comprar en Tuki-Tech."
-                .formatted(event.orderId(), event.total());
+        String subject = "Estamos procesando tu pago #" + event.paymentId();
+        String message = "Hola, estamos procesando tu pago #%d por un total de $%s. "
+                .formatted(event.paymentId(), event.amount())
+                + "Te avisaremos cuando se confirme.";
 
         Notification notification = new Notification(
                 event.orderId(), event.userEmail(), subject, message);
         Notification saved = notificationRepository.save(notification);
-        log.info("Notificacion {} enviada a {} por el pedido {}",
+        log.info("Aviso de pago en proceso {} enviado a {} (pago {})",
+                saved.getId(), event.userEmail(), event.paymentId());
+        return saved;
+    }
+
+    /**
+     * Correo de confirmacion del pedido con la boleta adjunta (fase 2).
+     */
+    public Notification sendOrderConfirmation(ReceiptGeneratedEvent event) {
+        if (event == null || event.receiptId() == null) {
+            throw new IllegalArgumentException("Evento de boleta invalido: sin receiptId");
+        }
+        failIfRequested(event.userEmail(), "confirmar el pedido de la boleta " + event.receiptId());
+
+        String subject = "Confirmacion de tu pedido #" + event.orderId();
+        String message = "Hola, tu pedido #%d fue pagado y confirmado. Total: $%s. "
+                .formatted(event.orderId(), event.total())
+                + "Adjuntamos tu boleta en PDF (" + event.pdfPath() + "). Gracias por comprar en Tuki-Tech.";
+
+        Notification notification = new Notification(
+                event.orderId(), event.userEmail(), subject, message);
+        Notification saved = notificationRepository.save(notification);
+        log.info("Correo de confirmacion {} enviado a {} (boleta {})",
+                saved.getId(), event.userEmail(), event.receiptId());
+        return saved;
+    }
+
+    /**
+     * Aviso de que el pedido fue recibido (disparado por order.created).
+     */
+    public Notification sendOrderReceivedNotification(OrderCreatedEvent event) {
+        if (event == null || event.orderId() == null) {
+            throw new IllegalArgumentException("Evento de pedido invalido: sin orderId");
+        }
+        failIfRequested(event.userEmail(), "avisar el pedido " + event.orderId());
+
+        String subject = "Recibimos tu pedido #" + event.orderId();
+        String message = "Hola, recibimos tu pedido #%d por un total de $%s. "
+                .formatted(event.orderId(), event.total())
+                + "Lo estamos procesando; te avisaremos cuando se confirme el pago.";
+
+        Notification notification = new Notification(
+                event.orderId(), event.userEmail(), subject, message);
+        Notification saved = notificationRepository.save(notification);
+        log.info("Aviso de pedido recibido {} enviado a {} (pedido {})",
                 saved.getId(), event.userEmail(), event.orderId());
         return saved;
+    }
+
+    /**
+     * Correo de bienvenida al registrar una cuenta nueva (user.registered).
+     */
+    public Notification sendWelcomeNotification(UserRegisteredEvent event) {
+        if (event == null || event.userId() == null) {
+            throw new IllegalArgumentException("Evento de usuario invalido: sin userId");
+        }
+        failIfRequested(event.email(), "dar la bienvenida al usuario " + event.userId());
+
+        String subject = "Bienvenido a Tuki-Tech";
+        String message = "Hola %s, tu cuenta (%s) fue creada con rol '%s'. "
+                .formatted(event.name(), event.email(), event.role())
+                + "Gracias por unirte a Tuki-Tech.";
+
+        Notification notification = new Notification(
+                null, event.email(), subject, message);
+        Notification saved = notificationRepository.save(notification);
+        log.info("Correo de bienvenida {} enviado a {} (usuario {})",
+                saved.getId(), event.email(), event.userId());
+        return saved;
+    }
+
+    private void failIfRequested(String email, String action) {
+        if (email != null && email.startsWith("fail@")) {
+            throw new IllegalStateException("Fallo simulado al " + action);
+        }
     }
 }

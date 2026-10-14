@@ -1,4 +1,4 @@
-package com.ecommerce.orders.model;
+package com.ecommerce.payments.model;
 
 import jakarta.persistence.*;
 
@@ -6,39 +6,49 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Ticket/documento generado de forma asincrona a partir de un pedido.
+ * Boleta generada (PDF) tras procesar un pago simulado.
  */
 @Entity
-@Table(name = "tickets")
-public class Ticket {
+@Table(name = "receipts")
+public class Receipt {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_id", nullable = false)
+    @Column(name = "payment_id", nullable = false)
+    private Long paymentId;
+
+    @Column(name = "order_id")
     private Long orderId;
 
-    @Column(name = "user_email")
+    @Column(name = "user_email", nullable = false)
     private String userEmail;
 
-    @Column(precision = 10, scale = 2)
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal total;
 
-    @Column(columnDefinition = "TEXT")
-    private String content;
+    /** Ruta del archivo PDF generado en disco. */
+    @Column(name = "pdf_path")
+    private String pdfPath;
+
+    @Column(name = "items_json", columnDefinition = "TEXT")
+    private String itemsJson;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    public Ticket() {
+    public Receipt() {
     }
 
-    public Ticket(Long orderId, String userEmail, BigDecimal total, String content) {
+    public Receipt(Long paymentId, Long orderId, String userEmail, BigDecimal total,
+                   String pdfPath, String itemsJson) {
+        this.paymentId = paymentId;
         this.orderId = orderId;
         this.userEmail = userEmail;
         this.total = total;
-        this.content = content;
+        this.pdfPath = pdfPath;
+        this.itemsJson = itemsJson;
     }
 
     @PrePersist
@@ -52,6 +62,14 @@ public class Ticket {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getPaymentId() {
+        return paymentId;
+    }
+
+    public void setPaymentId(Long paymentId) {
+        this.paymentId = paymentId;
     }
 
     public Long getOrderId() {
@@ -78,12 +96,20 @@ public class Ticket {
         this.total = total;
     }
 
-    public String getContent() {
-        return content;
+    public String getPdfPath() {
+        return pdfPath;
     }
 
-    public void setContent(String content) {
-        this.content = content;
+    public void setPdfPath(String pdfPath) {
+        this.pdfPath = pdfPath;
+    }
+
+    public String getItemsJson() {
+        return itemsJson;
+    }
+
+    public void setItemsJson(String itemsJson) {
+        this.itemsJson = itemsJson;
     }
 
     public LocalDateTime getCreatedAt() {

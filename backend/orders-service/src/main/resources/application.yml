@@ -59,20 +59,27 @@ cors:
 # Configuracion centralizada de mensajeria (RabbitMQ).
 # Unica fuente de verdad para nombres de exchanges, colas y
 # routing keys. Ningun nombre debe escribirse en el codigo de negocio.
+#
+# Este servicio consume:
+#   order.review.queue  (pedido para revision staff/admin) <- receipt.exchange
+#
+# Y produce:
+#   order.created       -> order.exchange  (aviso "pedido recibido")
 # ============================================================
 messaging:
   exchange:
-    orders: orders.exchange
-    dead-letter: orders.dlx
+    receipt: receipt.exchange
+    receipt-dead-letter: receipt.dlx
+    order: order.exchange
+    order-dead-letter: order.dlx
   queue:
-    notification: order.notification.queue
-    ticket: order.ticket.queue
-    notification-dlq: order.notification.dlq
-    ticket-dlq: order.ticket.dlq
+    order-review: order.review.queue
+    order-review-dlq: order.review.dlq
+    order-created: order.created.queue
+    order-created-dlq: order.created.dlq
   routing-key:
-    order-created: order.created
-    notification-dlq: order.notification.dlq
-    ticket-dlq: order.ticket.dlq
+    order-review-dlq: order.review.dlq
+    order-created-dlq: order.created.dlq
   retry:
     max-attempts: 3
     delay-ms: 500

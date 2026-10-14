@@ -11,8 +11,11 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 
 /**
- * Productor de eventos de pedidos. Encapsula el envio a RabbitMQ para que la
- * capa de negocio (OrderService) no dependa de la API de mensajeria.
+ * Productor de eventos del dominio de pedidos.
+ *
+ * Encapsula el envio a RabbitMQ para que la capa de negocio (OrderService) no
+ * dependa de la API de mensajeria. Un fallo de mensajeria no debe romper la
+ * creacion del pedido.
  */
 @Component
 public class OrderEventPublisher {
@@ -28,14 +31,13 @@ public class OrderEventPublisher {
     }
 
     /**
-     * Publica el evento {@code order.created} en el exchange de pedidos.
-     * Un fallo de mensajeria no debe romper la creacion del pedido.
+     * Publica el evento {@code order.created} en el exchange fanout de pedidos.
      */
     public void publishOrderCreated(OrderCreatedEvent event) {
         try {
             rabbitTemplate.convertAndSend(
-                    props.getExchange().getOrders(),
-                    props.getRoutingKey().getOrderCreated(),
+                    props.getExchange().getOrder(),
+                    "",
                     event,
                     message -> {
                         message.getMessageProperties().setHeader(
@@ -54,7 +56,7 @@ public class OrderEventPublisher {
      * reintentos. Se usa desde los consumidores cuando un procesamiento falla
      * y aun quedan intentos disponibles.
      */
-    public void republishToQueue(String queue, OrderCreatedEvent event, int retryCount) {
+    public void republishToQueue(String queue, Object event, int retryCount) {
         rabbitTemplate.convertAndSend("", queue, event, message -> {
             message.getMessageProperties().setHeader(MessagingHeaders.RETRY_COUNT, retryCount);
             return message;

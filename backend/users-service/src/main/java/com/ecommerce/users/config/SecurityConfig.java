@@ -44,6 +44,8 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
+                // Public endpoints - no authentication required (registro de cuentas)
+                .requestMatchers("/api/public/**").permitAll()
                 // Private endpoints - require JWT authentication
                 .requestMatchers("/api/users").authenticated()
                 .requestMatchers("/api/users/**").authenticated()

@@ -1,73 +1,138 @@
 # RabbitMQ - Mensajería asíncrona (Entrega 2)
 
-Esta guía documenta la integración de RabbitMQ: topología, microservicio
-administrador, manejo de errores con DLQ y variables de entorno.
+Esta guía documenta la integración de RabbitMQ: topología del **flujo de pago**,
+microservicio administrador, manejo de errores con DLQ y variables de entorno.
 
 ## 1. Topología de mensajería
 
+El flujo se divide en dos fases, cada una con un **exchange fanout** y una
+**DLX/DLQ por cola**.
+
 ```
-Pedido creado (orders-service)
+FASE 1 - Pago
+  POST /api/payments (payments-service)
+        │  publish payment.requested
+        ▼
+  payment.exchange  (fanout, durable)
+        ├── payment.notification.queue   (users-service)  → aviso "pago en proceso"
+        └── payment.screen.queue         (payments-service) → simula el pago (retardo)
+                                                              y genera la boleta PDF
+  payment.dlx (direct, durable)
+        ├── payment.notification.dlq
+        └── payment.screen.dlq
+
+FASE 2 - Boleta (tras procesar el pago)
+  (payment.screen.queue genera la boleta y publica receipt.generated)
+        ▼
+  receipt.exchange  (fanout, durable)
+        ├── receipt.email.queue    (users-service)    → correo confirmación + boleta
+        ├── order.review.queue     (orders-service)   → pedido para revisión staff/admin
+        └── stock.decrement.queue  (products-service) → descuento de stock
+  receipt.dlx (direct, durable)
+        ├── receipt.email.dlq
+        ├── order.review.dlq
+        └── stock.decrement.dlq
+
+Catálogo (products-service / categories-service)  [sin cambios]
+  catalog.exchange (topic, durable)
+        ├── category.created|updated|deleted → product.sync.queue   (products-service)
+        └── product.created|updated|deleted  → category.sync.queue  (categories-service)
+  catalog.dlx (direct, durable) → product.sync.dlq / category.sync.dlq
+
+FASE 3 - Pedido creado
+  POST /api/orders (orders-service)
         │  publish order.created
         ▼
-  orders.exchange  (topic, durable)
-        ├── routing key: order.created ──► order.ticket.queue       (orders-service)
-        └── routing key: order.created ──► order.notification.queue (users-service)
+  order.exchange  (fanout, durable)
+        └── order.created.queue   (users-service)  → aviso "pedido recibido"
+  order.dlx (direct, durable) → order.created.dlq
 
-  orders.dlx (direct, durable)  ◄── dead-letter de las colas de negocio
-        ├── routing key: order.ticket.dlq       ──► order.ticket.dlq
-        └── routing key: order.notification.dlq ──► order.notification.dlq
-
-Catálogo (products-service / categories-service)
-  catalog.exchange (topic, durable)
-        ├── routing key: category.created|updated|deleted ──► product.sync.queue   (products-service)
-        └── routing key: product.created|updated|deleted  ──► category.sync.queue  (categories-service)
-
-  catalog.dlx (direct, durable)  ◄── dead-letter de las colas de negocio
-        ├── routing key: product.sync.dlq  ──► product.sync.dlq
-        └── routing key: category.sync.dlq ──► category.sync.dlq
+Alta de usuario
+  POST /api/public/users/register (users-service)
+        │  publish user.registered
+        ▼
+  user.exchange   (fanout, durable)
+        └── user.registered.queue (users-service)  → correo de bienvenida (async)
+  user.dlx (direct, durable) → user.registered.dlq
 ```
 
 | Recurso | Tipo | Nombre | Archivo central |
 | --- | --- | --- | --- |
-| Exchange | topic | `orders.exchange` | `application.yml` → `messaging.exchange.orders` |
-| Exchange (DLX) | direct | `orders.dlx` | `messaging.exchange.dead-letter` |
-| Cola | durable | `order.ticket.queue` | `messaging.queue.ticket` |
-| Cola | durable | `order.notification.queue` | `messaging.queue.notification` |
-| Cola (DLQ) | durable | `order.ticket.dlq` | `messaging.queue.ticket-dlq` |
-| Cola (DLQ) | durable | `order.notification.dlq` | `messaging.queue.notification-dlq` |
-| Routing key | | `order.created` | `messaging.routing-key.order-created` |
+| Exchange | fanout | `payment.exchange` | `messaging.exchange.payment` |
+| Exchange (DLX) | direct | `payment.dlx` | `messaging.exchange.payment-dead-letter` |
+| Cola | durable | `payment.notification.queue` | `messaging.queue.payment-notification` |
+| Cola | durable | `payment.screen.queue` | `messaging.queue.payment-screen` |
+| Cola (DLQ) | durable | `payment.notification.dlq` | `messaging.queue.payment-notification-dlq` |
+| Cola (DLQ) | durable | `payment.screen.dlq` | `messaging.queue.payment-screen-dlq` |
+| Exchange | fanout | `receipt.exchange` | `messaging.exchange.receipt` |
+| Exchange (DLX) | direct | `receipt.dlx` | `messaging.exchange.receipt-dead-letter` |
+| Cola | durable | `receipt.email.queue` | `messaging.queue.receipt-email` |
+| Cola | durable | `order.review.queue` | `messaging.queue.order-review` |
+| Cola | durable | `stock.decrement.queue` | `messaging.queue.stock-decrement` |
+| Cola (DLQ) | durable | `receipt.email.dlq` | `messaging.queue.receipt-email-dlq` |
+| Cola (DLQ) | durable | `order.review.dlq` | `messaging.queue.order-review-dlq` |
+| Cola (DLQ) | durable | `stock.decrement.dlq` | `messaging.queue.stock-decrement-dlq` |
 | Exchange | topic | `catalog.exchange` | `messaging.exchange.catalog` |
 | Exchange (DLX) | direct | `catalog.dlx` | `messaging.exchange.dead-letter` |
 | Cola | durable | `product.sync.queue` | `messaging.queue.product-sync` |
 | Cola | durable | `category.sync.queue` | `messaging.queue.category-sync` |
 | Cola (DLQ) | durable | `product.sync.dlq` | `messaging.queue.product-sync-dlq` |
 | Cola (DLQ) | durable | `category.sync.dlq` | `messaging.queue.category-sync-dlq` |
-| Routing key | | `product.created|updated|deleted` | `messaging.routing-key.product-*` |
-| Routing key | | `category.created|updated|deleted` | `messaging.routing-key.category-*` |
+| Exchange | fanout | `order.exchange` | `messaging.exchange.order` |
+| Exchange (DLX) | direct | `order.dlx` | `messaging.exchange.order-dead-letter` |
+| Cola | durable | `order.created.queue` | `messaging.queue.order-created` |
+| Cola (DLQ) | durable | `order.created.dlq` | `messaging.queue.order-created-dlq` |
+| Exchange | fanout | `user.exchange` | `messaging.exchange.user` |
+| Exchange (DLX) | direct | `user.dlx` | `messaging.exchange.user-dead-letter` |
+| Cola | durable | `user.registered.queue` | `messaging.queue.user-registered` |
+| Cola (DLQ) | durable | `user.registered.dlq` | `messaging.queue.user-registered-dlq` |
 
 Los nombres **solo** viven en `application.yml` (cargados por
 `MessagingProperties` con `@ConfigurationProperties`). Los beans
-`Queue`/`Exchange`/`Binding` se declaran en `RabbitMQConfig`
-(ver `orders-service`, `users-service`, `products-service` y `categories-service`).
+`Queue`/`Exchange`/`Binding` se declaran en `RabbitMQConfig` (ver
+`payments-service`, `users-service`, `orders-service`, `products-service` y
+`categories-service`).
+
+> Nota: en un fanout el binding no usa routing key. La DLX es **direct**, por lo
+> que cada cola define su `x-dead-letter-routing-key` (p. ej.
+> `payment.screen.dlq`), que coincide con el binding de la DLQ.
 
 ## 2. Flujo asíncrono
 
-1. `POST /api/orders` → `OrderService.createOrder` guarda el pedido y publica
-   `order.created` (vía `OrderEventPublisher`). Un fallo de mensajería **no**
-   rompe la creación del pedido.
-2. `users-service` consume `order.notification.queue` y genera una notificación
-   (`NotificationConsumer` + `NotificationService`).
-3. `orders-service` consume `order.ticket.queue` y genera el ticket/documento
-   (`TicketGenerationConsumer` + `TicketService`).
+1. `POST /api/payments` → `PaymentService.createPayment` guarda el pago en
+   estado `PROCESSING` y publica `payment.requested` en `payment.exchange`.
+2. `users-service` consume `payment.notification.queue` y crea la notificación
+   "estamos procesando tu pago" (`PaymentNotificationConsumer` +
+   `NotificationService`).
+3. `payments-service` consume `payment.screen.queue`
+   (`PaymentScreenConsumer`): **simula** el pago con un retardo
+   (`messaging.processing.delay-ms`), marca el pago como `COMPLETED`, genera la
+   **boleta PDF** (`ReceiptService`, OpenPDF) y publica `receipt.generated` en
+   `receipt.exchange`.
+4. A partir de `receipt.exchange`, en paralelo:
+   - `users-service` (`receipt.email.queue`) → correo de confirmación + boleta.
+   - `orders-service` (`order.review.queue`) → guarda el pedido para revisión
+     (`OrderReviewService`, estado `PENDING_REVIEW`).
+   - `products-service` (`stock.decrement.queue`) → descuenta el stock de los
+     productos comprados (`ProductService.decrementStock`).
 
-Flujo de catálogo (productor + consumidor en cada servicio):
+Flujo de catálogo (productor + consumidor en cada servicio), **sin cambios**:
 
-4. `products-service` publica `product.created|updated|deleted` (vía
-   `ProductEventPublisher`) al crear/editar/eliminar un producto.
-5. `categories-service` consume `category.sync.queue` (`ProductEventConsumer`).
-6. `categories-service` publica `category.created|updated|deleted` (vía
-   `CategoryEventPublisher`).
-7. `products-service` consume `product.sync.queue` (`CategoryEventConsumer`).
+5. `products-service` publica `product.created|updated|deleted`.
+6. `categories-service` consume `category.sync.queue`.
+7. `categories-service` publica `category.created|updated|deleted`.
+8. `products-service` consume `product.sync.queue`.
+
+Flujo de pedido y alta de usuario (cada microservicio es **productor y consumidor**):
+
+9. `orders-service` publica `order.created` en `order.exchange` al crear un
+   pedido (`OrderEventPublisher` desde `OrderService`).
+10. `users-service` consume `order.created.queue` (`OrderCreatedConsumer`) y
+    genera el aviso "pedido recibido" (`NotificationService`).
+11. `users-service` publica `user.registered` en `user.exchange` al registrar
+    una cuenta (`UserEventPublisher` desde `UserService`).
+12. `users-service` consume `user.registered.queue` (`UserRegisteredConsumer`) y
+    genera el correo de bienvenida de forma asincrona.
 
 ## 3. ACK/NACK, reintentos y DLQ
 
@@ -78,21 +143,24 @@ Flujo de catálogo (productor + consumidor en cada servicio):
   `x-retry-count` (hasta `messaging.retry.max-attempts`, por defecto 3).
 - Agotados los intentos, hacen `channel.basicNack(..., requeue=false)`, lo que
   enruta el mensaje al **dead-letter exchange** y termina en la DLQ.
-- Un `DeadLetterLogConsumer` registra en el log los mensajes no entregados
+- Un `*DeadLetterLogConsumer` registra en el log los mensajes no entregados
   (payload + cabecera `x-death`).
 
 ### Probar la DLQ
-Envía una orden cuyo correo empiece con `fail@` (fallo simulado en
-`NotificationService`), por ejemplo:
+Envía un pago cuyo correo empiece con `fail@` (fallo simulado en el
+`PaymentScreenConsumer` y en las notificaciones), por ejemplo:
 
 ```bash
-curl -X POST http://localhost:8084/api/orders \
+curl -X POST http://localhost:8086/api/payments \
   -H "Authorization: Bearer <JWT>" -H "Content-Type: application/json" \
-  -d '{"userEmail":"fail@demo.cl","total":1000,"shippingAddress":"Av. Siempre Viva 742"}'
+  -d '{"userEmail":"fail@demo.cl","amount":1000,"method":"CREDIT_CARD",
+       "shippingAddress":"Av. Siempre Viva 742",
+       "items":[{"productId":1,"productName":"Teclado","quantity":1,"unitPrice":1000}]}'
 ```
 
 Tras 3 reintentos verás el log `Reintentos agotados ... Enviando a la DLQ` y el
-`DeadLetterLogConsumer` con `[DLQ:notification]`.
+`DeadLetterLogConsumer` con `[DLQ:payment.screen]`. Para la DLQ de stock, envía
+un `productId` inexistente (o mayor al stock disponible).
 
 ## 4. Microservicio administrador
 
@@ -129,12 +197,12 @@ curl -X POST http://localhost:8085/api/rabbit/queues \
 # Crear exchange
 curl -X POST http://localhost:8085/api/rabbit/exchanges \
   -H "Authorization: Bearer <JWT>" -H "Content-Type: application/json" \
-  -d '{"name":"demo.exchange","type":"topic","durable":true}'
+  -d '{"name":"demo.exchange","type":"fanout","durable":true}'
 
 # Crear binding
 curl -X POST http://localhost:8085/api/rabbit/bindings \
   -H "Authorization: Bearer <JWT>" -H "Content-Type: application/json" \
-  -d '{"exchange":"demo.exchange","queue":"demo.queue","routingKey":"demo.key"}'
+  -d '{"exchange":"demo.exchange","queue":"demo.queue","routingKey":""}'
 ```
 
 ## 5. Configuración (CloudAMQP / nube)
@@ -152,7 +220,7 @@ RABBITMQ_VHOST=<vhost>
 RABBITMQ_MANAGEMENT_URL=https://<instancia>.rmq.cloudamqp.com
 ```
 
-> En CloudAMQP el brote AMQP está en el puerto **5671** (TLS) y expone la
+> En CloudAMQP el broker AMQP está en el puerto **5671** (TLS) y expone la
 > Management API por HTTPS para el mismo host. Si tu plan no incluye management,
 > los `GET` de listado devolverán listas vacías sin afectar la creación/eliminación.
 
@@ -171,22 +239,33 @@ docker exec rabbitmq1 rabbitmqctl cluster_status   # 2 nodos
   (`docker/rabbitmq/rabbitmq.conf`).
 - Credenciales locales `tuki / tuki` (ajústalas en `.env`).
 
-**Verificado (12/10/2026):** `docker compose up -d --wait` → nodos `rabbit@rabbitmq1`
-y `rabbit@rabbitmq2` `running`, RabbitMQ 3.13.7, sin alarms ni particiones.
+## 6. Variables propias del flujo de pago
 
-## 6. Frontend
+| Variable | Default | Descripción |
+| --- | --- | --- |
+| `PAYMENT_DELAY_MS` | `3000` | Retardo (ms) de la simulación de la pasarela |
+| `RECEIPT_STORAGE_DIR` | `receipts` | Directorio donde se guardan las boletas PDF |
+
+## 7. Frontend
 
 El panel admin incluye la vista **RabbitMQ** (`/admin/rabbitmq`), protegida por
 MSAL + rol `admin`, que consume `rabbitmq-admin-service` a través de
 `environment.rabbitUrl`.
 
-## 7. Despliegue
+La página **`/register`** (pública, sin login) crea cuentas llamando a
+`POST /api/public/users/register` (`environment.usersPublicUrl`). El alta guarda
+el perfil y publica `user.registered`; el correo de bienvenida se genera de
+forma asincrona. El checkout del carrito crea el pedido
+(`POST /api/orders`) y luego registra el pago (`POST /api/payments`,
+`environment.paymentsUrl`), disparando todo el flujo asincrono.
 
-- Levanta `rabbitmq-admin-service` (puerto 8085) igual que los demás servicios
+## 8. Despliegue
+
+- Levanta `payments-service` (puerto 8086) igual que los demás servicios
   (EC2 o contenedor). Requiere el mismo JWT de Entra ID.
 - En el API Gateway agrega la integración y la ruta
-  `/api/rabbit/{proxy+}` → `http://<host>:8085` con el **JWT authorizer**,
-  para que el frontend la consuma como `<PROD_BACKEND_URL>/api/rabbit`.
-- En el EC2 exporta las variables `RABBITMQ_*` para que `orders-service`,
-  `users-service` y `rabbitmq-admin-service` se conecten a CloudAMQP.
-
+  `/api/payments/{proxy+}` → `http://<host>:8086` y
+  `/api/receipts/{proxy+}` → `http://<host>:8086` con el **JWT authorizer**.
+- En el EC2 exporta las variables `RABBITMQ_*` para que `payments-service`,
+  `orders-service`, `users-service`, `products-service` y
+  `rabbitmq-admin-service` se conecten a CloudAMQP.

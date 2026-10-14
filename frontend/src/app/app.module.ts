@@ -7,6 +7,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
+import { RegisterComponent } from './register/register.component';
 import { AdminComponent } from './admin/admin.component';
 import { MyOrdersComponent } from './my-orders/my-orders.component';
 import { RabbitmqAdminComponent } from './rabbitmq-admin/rabbitmq-admin.component';
@@ -75,6 +76,7 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     [environment.categoriesUrl, environment.scopes],
     [environment.usersUrl, environment.scopes],
     [environment.ordersUrl, environment.scopes],
+    [environment.paymentsUrl, environment.scopes],
     [environment.rabbitUrl, environment.scopes]
   ])
 };
@@ -84,6 +86,7 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     AppComponent,
     HomeComponent,
     LoginComponent,
+    RegisterComponent,
     AdminComponent,
     MyOrdersComponent,
     RabbitmqAdminComponent

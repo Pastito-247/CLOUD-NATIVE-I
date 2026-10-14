@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.FanoutExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
@@ -19,14 +20,17 @@ import org.springframework.context.annotation.Configuration;
  * Configuracion de RabbitMQ del dominio de catalogo (lado productos).
  *
  * Declara el exchange de catalogo, la cola de sincronizacion de productos
- * y su dead-letter. La cola consume los eventos del dominio de categorias
- * (category.*) para reaccionar a cambios en el catalogo; los eventos de
- * producto (product.*) los produce este mismo servicio.
+ * y su dead-letter. Ademas declara la cola de descuento de stock del flujo de
+ * pago (consumida cuando se procesa un pago).
  *
  * Topologia:
  *   catalog.exchange (topic)
  *     --(category.created|updated|deleted)--> product.sync.queue
  *   catalog.dlx (direct) -> product.sync.dlq
+ *
+ *   receipt.exchange (fanout)
+ *     --o stock.decrement.queue   -> descuento de stock
+ *   receipt.dlx (direct) -> stock.decrement.dlq
  */
 @Configuration
 @EnableConfigurationProperties(MessagingProperties.class)
@@ -52,6 +56,16 @@ public class RabbitMQConfig {
         return new DirectExchange(props.getExchange().getDeadLetter(), true, false);
     }
 
+    @Bean
+    public FanoutExchange receiptExchange() {
+        return new FanoutExchange(props.getExchange().getReceipt(), true, false);
+    }
+
+    @Bean
+    public DirectExchange receiptDeadLetterExchange() {
+        return new DirectExchange(props.getExchange().getReceiptDeadLetter(), true, false);
+    }
+
     // ------------------------------------------------------------------
     // Colas de negocio (con dead-letter hacia catalog.dlx)
     // ------------------------------------------------------------------
@@ -67,6 +81,19 @@ public class RabbitMQConfig {
     @Bean
     public Queue productSyncDeadLetterQueue() {
         return QueueBuilder.durable(props.getQueue().getProductSyncDlq()).build();
+    }
+
+    @Bean
+    public Queue stockDecrementQueue() {
+        return QueueBuilder.durable(props.getQueue().getStockDecrement())
+                .deadLetterExchange(props.getExchange().getReceiptDeadLetter())
+                .deadLetterRoutingKey(props.getRoutingKey().getStockDecrementDlq())
+                .build();
+    }
+
+    @Bean
+    public Queue stockDecrementDeadLetterQueue() {
+        return QueueBuilder.durable(props.getQueue().getStockDecrementDlq()).build();
     }
 
     // ------------------------------------------------------------------
@@ -99,6 +126,18 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(productSyncDeadLetterQueue())
                 .to(catalogDeadLetterExchange())
                 .with(props.getRoutingKey().getProductSyncDlq());
+    }
+
+    @Bean
+    public Binding stockDecrementBinding() {
+        return BindingBuilder.bind(stockDecrementQueue()).to(receiptExchange());
+    }
+
+    @Bean
+    public Binding stockDecrementDeadLetterBinding() {
+        return BindingBuilder.bind(stockDecrementDeadLetterQueue())
+                .to(receiptDeadLetterExchange())
+                .with(props.getRoutingKey().getStockDecrementDlq());
     }
 
     // ------------------------------------------------------------------

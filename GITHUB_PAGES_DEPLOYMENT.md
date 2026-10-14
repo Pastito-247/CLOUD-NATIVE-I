@@ -36,8 +36,11 @@ el frontend en producción:
 | `categoriesUrl` | `https://<HOST_BACKEND>/api/categories` |
 | `usersUrl` | `https://<HOST_BACKEND>/api/users` |
 | `ordersUrl` | `https://<HOST_BACKEND>/api/orders` |
+| `rabbitUrl` | `https://<HOST_BACKEND>/api/rabbit` |
+| `paymentsUrl` | `https://<HOST_BACKEND>/api/payments` |
 | `productsPublicUrl` | `https://<HOST_BACKEND>/api/public/products` (Home, sin login) |
 | `categoriesPublicUrl` | `https://<HOST_BACKEND>/api/public/categories` (Home, sin login) |
+| `usersPublicUrl` | `https://<HOST_BACKEND>/api/public/users` (registro, sin login) |
 
 ---
 
@@ -111,7 +114,7 @@ En EC2 → tu instancia → Security → Security group → **Edit inbound rules
 | HTTPS | 443 | 0.0.0.0/0 |
 
 El puerto 80 es necesario para que Let's Encrypt valide el certificado (HTTP-01).
-(8081-8085 pueden quedar abiertos para debugging, o cerrarlos ya.)
+(8081-8086 pueden quedar abiertos para debugging, o cerrarlos ya.)
 
 ### 1.5 Instalar Caddy en el EC2
 
@@ -166,7 +169,7 @@ Debe responder el mismo JSON que probabas con la IP. Si falla, espera 1-2 min
 
 ---
 
-## Fase 2 — CORS en los 5 servicios
+## Fase 2 — CORS en los 6 servicios
 
 El navegador del sitio publicado enviará `Origin: https://pastito-247.github.io`.
 Agrega esa URL en cada unidad systemd (y conserva `http://localhost:4200`
@@ -182,17 +185,18 @@ por
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
 ```
 
-Repite en `tuki-categories`, `tuki-users`, `tuki-orders` y `tuki-rabbit-admin`. Luego:
+Repite en `tuki-categories`, `tuki-users`, `tuki-orders`, `tuki-rabbit-admin`
+y `tuki-payments`. Luego:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl restart tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin
+sudo systemctl restart tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin tuki-payments
 ```
 
 > Nota: los controllers ya no llevan `@CrossOrigin("*")` (se quitaron al migrar a
 > la validación por `issuer` + `audience`). Todo el CORS sale del `SecurityConfig`
 > (`cors.allowed-origins`), por eso es obligatorio actualizar el
-> `CORS_ALLOWED_ORIGINS` en los 5 servicios.
+> `CORS_ALLOWED_ORIGINS` en los 6 servicios.
 
 ---
 
@@ -297,4 +301,4 @@ Recuerda: con la Opción A el hostname depende de la Elastic IP — si la IP cam
 cambia el host; con dominio propio solo cambias el registro A.
 
 **Volver a desarrollo local**: no afecta, porque el environment de desarrollo sigue
-apuntando a `http://localhost:8081-8085` y CORS ya permite `http://localhost:4200`.
+apuntando a `http://localhost:8081-8086` y CORS ya permite `http://localhost:4200`.

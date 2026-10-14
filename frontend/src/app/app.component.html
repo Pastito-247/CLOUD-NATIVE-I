@@ -73,6 +73,15 @@
         Iniciar sesión
       </button>
 
+      <a
+        *ngIf="!isLoggedIn"
+        routerLink="/register"
+        routerLinkActive="active"
+        class="nav-btn nav-register"
+        (click)="menuOpen = false">
+        Crear cuenta
+      </a>
+
       <button *ngIf="isLoggedIn" class="nav-btn nav-logout" (click)="logout()">
         Cerrar sesión
       </button>
@@ -169,6 +178,16 @@
         class="shipping-input"
         [(ngModel)]="shippingAddress"
         placeholder="Dirección de envío">
+
+      <select
+        *ngIf="isLoggedIn"
+        class="shipping-input payment-method"
+        [(ngModel)]="paymentMethod"
+        aria-label="Método de pago">
+        <option value="CARD">Tarjeta</option>
+        <option value="PSE">PSE</option>
+        <option value="CASH">Efectivo</option>
+      </select>
 
       <button
         *ngIf="!isLoggedIn"

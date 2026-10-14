@@ -26,11 +26,16 @@ Proyecto del ramo DESARROLLO CLOUD NATIVE I
 - **Orders Service** (puerto 8084): 
   - APIs privadas: `/api/orders/**` (requiere JWT)
   - APIs admin: GET all orders, PUT, DELETE (requiere rol admin)
+  - Pedidos para revisión (staff/admin): `/api/orders/review/**`
+- **Payments Service** (puerto 8086): 
+  - API de pago: `POST /api/payments` (requiere JWT)
+  - Boletas: `/api/receipts/**` (consulta y descarga del PDF)
+  - Orquesta el flujo asíncrono de pago y generación de boleta
 
 ### Infraestructura AWS
 - **API Gateway**: 
-  - Rutas públicas: `/products/public/**`, `/categories/public/**` (sin validación JWT)
-  - Rutas privadas: `/products/**`, `/categories/**`, `/users/**`, `/orders/**` (validación JWT)
+  - Rutas públicas: `/api/public/products/**`, `/api/public/categories/**`, `/api/public/users/**` (sin validación JWT)
+  - Rutas privadas: `/api/products/**`, `/api/categories/**`, `/api/users/**`, `/api/orders/**`, `/api/rabbit/**`, `/api/payments/**`, `/api/receipts/**` (validación JWT)
   - Validación JWT con Azure AD issuer
 - **EC2**: Instancias para cada microservicio
 - **RDS**: Base de datos MySQL cloud
@@ -42,16 +47,35 @@ Proyecto del ramo DESARROLLO CLOUD NATIVE I
 - **Access Token**: JWT validado en backend y API Gateway
 
 ### Mensajería asíncrona (RabbitMQ)
+- **Payments Service** (puerto 8086): expone la API de pago
+  (`POST /api/payments`) y orquesta el flujo asíncrono. No hay pasarela real:
+  el pago se **simula** con un retardo (cola de pantalla) y al procesarse genera
+  una **boleta en PDF** (OpenPDF).
+- **Flujo de pago (2 exchanges fanout con DLQ):**
+  1. `POST /api/payments` -> `payment.exchange` (fanout) ->
+     - `payment.notification.queue` (users-service): aviso "pago en proceso".
+     - `payment.screen.queue` (payments-service): simula el pago (retardo) y
+       genera la boleta PDF.
+  2. Al procesar el pago -> `receipt.exchange` (fanout) ->
+     - `receipt.email.queue` (users-service): correo de confirmación + boleta.
+     - `order.review.queue` (orders-service): pedido para revisión de
+       staff/administrador.
+     - `stock.decrement.queue` (products-service): descuento de stock.
+  3. `POST /api/orders` -> `order.exchange` (fanout) -> `order.created.queue`
+     (users-service): aviso "pedido recibido".
+  4. `POST /api/public/users/register` -> `user.exchange` (fanout) ->
+     `user.registered.queue` (users-service): correo de bienvenida (async).
+- **Registro de cuentas:** endpoint público `POST /api/public/users/register`
+  (crea el perfil en users-service, rol por defecto `customer`) y página
+  Angular `/register`. Los nombres de cola/exchange se centralizan en
+  `application.yml` (`messaging.*`).
+- **Dead Letter Queues (DLQ):** cada cola tiene `x-dead-letter-exchange` hacia
+  `payment.dlx` / `receipt.dlx` / `order.dlx` / `user.dlx`; los mensajes que
+  agotan reintentos se registran en logs por los `DeadLetterLogConsumer`.
+- **Catálogo** (products-service / categories-service): se mantiene la
+  sincronización vía `catalog.exchange` (topic).
 - **RabbitMQ Admin Service** (puerto 8085): administra colas, exchanges y
   bindings vía API REST (`/api/rabbit/**`, requiere rol admin).
-- **orders-service**: publica el evento `order.created` y consume la cola de
-  generación de **tickets/documentos**.
-- **users-service**: consume la cola de **notificaciones**.
-- **products-service** y **categories-service**: cada uno publica sus eventos
-  de catálogo (`product.*` / `category.*`) y consume los del otro dominio en
-  `catalog.exchange` (sincronización de catálogo).
-- **Dead Letter Queues (DLQ)**: los mensajes que agotan reintentos se envían a
-  `orders.dlx` / `catalog.dlx` y se registran en logs.
 - Config centralizada en `application.yml` (`messaging.*`) con beans
   `Queue`/`Exchange`/`Binding`. Ver [RABBITMQ_SETUP.md](./RABBITMQ_SETUP.md).
 
@@ -170,7 +194,7 @@ Detalle completo de la topología, DLQ y endpoints en
 2. Instala Java y Maven en cada instancia
 3. Sube los JAR compilados
 4. Ejecuta cada servicio con `java -jar service.jar`
-5. Configura Security Groups para permitir tráfico en puertos 8081-8085
+5. Configura Security Groups para permitir tráfico en puertos 8081-8086
 
 ### AWS API Gateway
 
@@ -203,8 +227,11 @@ Resumen (HTTP API de AWS):
 ### Entrega 2 (RabbitMQ)
 - **Nombres centralizados**: `application.yml` + `@ConfigurationProperties` ✅
 - **Beans Queue/Exchange/Binding**: en clases `RabbitMQConfig` ✅
-- **Productores y consumidores**: `order.created` → notificación + ticket; y
-  catálogo `product.*`/`category.*` entre products-service y categories-service ✅
+- **Flujo de pago (fanout)**: `payment.requested`/`receipt.generated` →
+  notificación, simulación con boleta PDF, correo, revisión de pedido y descuento
+  de stock ✅
+- **Catálogo**: `product.*`/`category.*` entre products-service y
+  categories-service ✅
 - **ACK/NACK explícito y DLQ**: reintentos, NACK sin requeue y logs de DLQ ✅
 - **Microservicio administrador**: `rabbitmq-admin-service` con API REST validada ✅
 - **Vista frontend**: `/admin/rabbitmq` para gestionar colas, exchanges y bindings ✅
@@ -239,8 +266,9 @@ CLOUD-NATIVE-I/
 │   │   └── src/main/resources/
 │   │       └── application.yml # Config centralizada (messaging.*)
 │   ├── categories-service/      # Puerto 8082 (productor category.* + consumidor product.*)
-│   ├── users-service/          # Puerto 8083 (consumidor de notificaciones)
-│   ├── orders-service/         # Puerto 8084 (productor order.created + tickets)
+│   ├── users-service/          # Puerto 8083 (consumidor: aviso de pago + correo boleta)
+│   ├── orders-service/         # Puerto 8084 (consumidor: pedidos para revisión)
+│   ├── payments-service/       # Puerto 8086 (API de pago + boleta PDF, exchanges fanout)
 │   └── rabbitmq-admin-service/ # Puerto 8085 (administración de RabbitMQ)
 ├── RABBITMQ_SETUP.md           # Guía de mensajería asíncrona (Entrega 2)
 ├── AZURE_AD_SETUP.md           # Guía configuración Azure AD
@@ -267,7 +295,10 @@ CLOUD-NATIVE-I/
 - `GET /api/users/me` - Usuario actual
 - `GET /api/orders/{id}` - Obtener pedido
 - `GET /api/orders/my-orders` - Pedidos del usuario actual
-- `POST /api/orders` - Crear pedido
+- `POST /api/payments` - Registrar un pago (inicia el flujo asíncrono)
+- `GET /api/payments/my-payments` - Pagos del usuario actual
+- `GET /api/receipts/payment/{paymentId}` - Boleta de un pago
+- `GET /api/receipts/{id}/pdf` - Descargar la boleta PDF
 
 ### APIs Admin (requieren rol admin)
 - `POST /api/products` - Crear producto
@@ -283,6 +314,9 @@ CLOUD-NATIVE-I/
 - `GET /api/orders` - Listar todos los pedidos
 - `PUT /api/orders/{id}` - Actualizar pedido
 - `DELETE /api/orders/{id}` - Eliminar pedido
+- `GET /api/orders/review` - Pedidos para revisión (admin/staff)
+- `GET /api/orders/review/pending` - Pedidos pendientes de revisión
+- `GET /api/payments` - Listar todos los pagos
 
 ### API de administración de RabbitMQ (requieren rol admin)
 - `POST /api/rabbit/queues` - Crear cola
@@ -317,21 +351,35 @@ cd backend/orders-service
 mvn spring-boot:run
 
 # Terminal 5
+cd backend/payments-service
+mvn spring-boot:run
+
+# Terminal 6
 cd backend/rabbitmq-admin-service
 mvn spring-boot:run
 ```
 
-> Alternativa (Windows): `.\scripts\run-backend.ps1 orders-service` carga
+> Alternativa (Windows): `.\scripts\run-backend.ps1 payments-service` carga
 > automáticamente las variables del `.env` raíz (incluidas las credenciales de
 > RabbitMQ/CloudAMQP) antes de arrancar.
 
-### 2. Iniciar frontend
+### 2. Probar el flujo de pago (asíncrono)
+```bash
+curl -X POST http://localhost:8086/api/payments \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"userEmail":"cliente@demo.cl","amount":19990,"method":"CREDIT_CARD","shippingAddress":"Av. Siempre Viva 742","items":[{"productId":1,"productName":"Teclado","quantity":2,"unitPrice":9995}]}'
+```
+Provoca: aviso de "pago en proceso", simulación con boleta PDF, correo de
+confirmación, pedido para revisión y descuento de stock. Usa `fail@demo.cl` para
+ver la DLQ.
+
+### 3. Iniciar frontend
 ```bash
 cd frontend
 npm start
 ```
 
-### 3. Probar APIs públicas
+### 4. Probar APIs públicas
 ```bash
 curl http://localhost:8081/api/products/public
 curl http://localhost:8082/api/categories/public
@@ -340,7 +388,7 @@ curl http://localhost:8082/api/categories/public
 > products y categories se **auto-siembran** con datos demo al arrancar si la
 > base está vacía (6 categorías + 19 productos). No necesitas seed manual.
 
-### 4. Probar APIs privadas (requiere token)
+### 5. Probar APIs privadas (requiere token)
 ```bash
 # Primero obtén el access token desde el frontend
 # Luego úsalo en el header Authorization

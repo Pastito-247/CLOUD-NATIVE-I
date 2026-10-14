@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.FanoutExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
-import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
@@ -18,16 +18,20 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Configuracion de RabbitMQ del dominio de pedidos.
  *
- * Declara, mediante beans, el exchange, las colas, los bindings y el
- * dead-letter (DLX/DLQ) de cada caso de uso. Toda la infraestructura de
- * mensajeria queda aislada aqui; los servicios de dominio no conocen
- * detalles de RabbitMQ.
+ * Declara el exchange fanout de boletas (lado consumidor de order.review) y el
+ * exchange fanout de pedidos (lado productor de order.created), junto con sus
+ * colas, bindings y dead-letter (DLX/DLQ). Toda la infraestructura de
+ * mensajeria queda aislada aqui; los servicios de dominio no conocen detalles
+ * de RabbitMQ.
  *
  * Topologia:
- *   orders.exchange (topic)
- *     --(order.created)--> order.notification.queue  -> consumida por users-service
- *     --(order.created)--> order.ticket.queue        -> consumida por orders-service
- *   orders.dlx (direct) -> order.notification.dlq / order.ticket.dlq
+ *   receipt.exchange (fanout)
+ *     --o order.review.queue     -> pedido para revision staff/admin  (consume)
+ *   receipt.dlx (direct) -> order.review.dlq
+ *
+ *   order.exchange (fanout)      -> publicado al crear un pedido (produce)
+ *     --o order.created.queue    -> aviso "pedido recibido" (consume users-service)
+ *   order.dlx (direct) -> order.created.dlq
  */
 @Configuration
 @EnableConfigurationProperties(MessagingProperties.class)
@@ -44,32 +48,42 @@ public class RabbitMQConfig {
     // ------------------------------------------------------------------
 
     @Bean
-    public TopicExchange ordersExchange() {
-        return new TopicExchange(props.getExchange().getOrders(), true, false);
+    public FanoutExchange receiptExchange() {
+        return new FanoutExchange(props.getExchange().getReceipt(), true, false);
     }
 
     @Bean
-    public DirectExchange ordersDeadLetterExchange() {
-        return new DirectExchange(props.getExchange().getDeadLetter(), true, false);
+    public DirectExchange receiptDeadLetterExchange() {
+        return new DirectExchange(props.getExchange().getReceiptDeadLetter(), true, false);
+    }
+
+    @Bean
+    public FanoutExchange orderExchange() {
+        return new FanoutExchange(props.getExchange().getOrder(), true, false);
+    }
+
+    @Bean
+    public DirectExchange orderDeadLetterExchange() {
+        return new DirectExchange(props.getExchange().getOrderDeadLetter(), true, false);
     }
 
     // ------------------------------------------------------------------
-    // Colas de negocio (con dead-letter hacia orders.dlx)
+    // Colas de negocio (con dead-letter)
     // ------------------------------------------------------------------
 
     @Bean
-    public Queue notificationQueue() {
-        return QueueBuilder.durable(props.getQueue().getNotification())
-                .deadLetterExchange(props.getExchange().getDeadLetter())
-                .deadLetterRoutingKey(props.getRoutingKey().getNotificationDlq())
+    public Queue orderReviewQueue() {
+        return QueueBuilder.durable(props.getQueue().getOrderReview())
+                .deadLetterExchange(props.getExchange().getReceiptDeadLetter())
+                .deadLetterRoutingKey(props.getRoutingKey().getOrderReviewDlq())
                 .build();
     }
 
     @Bean
-    public Queue ticketQueue() {
-        return QueueBuilder.durable(props.getQueue().getTicket())
-                .deadLetterExchange(props.getExchange().getDeadLetter())
-                .deadLetterRoutingKey(props.getRoutingKey().getTicketDlq())
+    public Queue orderCreatedQueue() {
+        return QueueBuilder.durable(props.getQueue().getOrderCreated())
+                .deadLetterExchange(props.getExchange().getOrderDeadLetter())
+                .deadLetterRoutingKey(props.getRoutingKey().getOrderCreatedDlq())
                 .build();
     }
 
@@ -78,13 +92,13 @@ public class RabbitMQConfig {
     // ------------------------------------------------------------------
 
     @Bean
-    public Queue notificationDeadLetterQueue() {
-        return QueueBuilder.durable(props.getQueue().getNotificationDlq()).build();
+    public Queue orderReviewDeadLetterQueue() {
+        return QueueBuilder.durable(props.getQueue().getOrderReviewDlq()).build();
     }
 
     @Bean
-    public Queue ticketDeadLetterQueue() {
-        return QueueBuilder.durable(props.getQueue().getTicketDlq()).build();
+    public Queue orderCreatedDeadLetterQueue() {
+        return QueueBuilder.durable(props.getQueue().getOrderCreatedDlq()).build();
     }
 
     // ------------------------------------------------------------------
@@ -92,31 +106,27 @@ public class RabbitMQConfig {
     // ------------------------------------------------------------------
 
     @Bean
-    public Binding notificationBinding() {
-        return BindingBuilder.bind(notificationQueue())
-                .to(ordersExchange())
-                .with(props.getRoutingKey().getOrderCreated());
+    public Binding orderReviewBinding() {
+        return BindingBuilder.bind(orderReviewQueue()).to(receiptExchange());
     }
 
     @Bean
-    public Binding ticketBinding() {
-        return BindingBuilder.bind(ticketQueue())
-                .to(ordersExchange())
-                .with(props.getRoutingKey().getOrderCreated());
+    public Binding orderCreatedBinding() {
+        return BindingBuilder.bind(orderCreatedQueue()).to(orderExchange());
     }
 
     @Bean
-    public Binding notificationDeadLetterBinding() {
-        return BindingBuilder.bind(notificationDeadLetterQueue())
-                .to(ordersDeadLetterExchange())
-                .with(props.getRoutingKey().getNotificationDlq());
+    public Binding orderReviewDeadLetterBinding() {
+        return BindingBuilder.bind(orderReviewDeadLetterQueue())
+                .to(receiptDeadLetterExchange())
+                .with(props.getRoutingKey().getOrderReviewDlq());
     }
 
     @Bean
-    public Binding ticketDeadLetterBinding() {
-        return BindingBuilder.bind(ticketDeadLetterQueue())
-                .to(ordersDeadLetterExchange())
-                .with(props.getRoutingKey().getTicketDlq());
+    public Binding orderCreatedDeadLetterBinding() {
+        return BindingBuilder.bind(orderCreatedDeadLetterQueue())
+                .to(orderDeadLetterExchange())
+                .with(props.getRoutingKey().getOrderCreatedDlq());
     }
 
     // ------------------------------------------------------------------

@@ -24,11 +24,11 @@ public class DeadLetterLogConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(DeadLetterLogConsumer.class);
 
-    @RabbitListener(queues = "${messaging.queue.ticket-dlq}")
-    public void onTicketDeadLetter(Message message,
-                                   Channel channel,
-                                   @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
-        logDeadLetter("ticket", message);
+    @RabbitListener(queues = "${messaging.queue.order-review-dlq}")
+    public void onOrderReviewDeadLetter(Message message,
+                                        Channel channel,
+                                        @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+        logDeadLetter("order.review", message);
         channel.basicAck(deliveryTag, false);
     }
 
