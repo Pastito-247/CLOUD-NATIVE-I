@@ -1,17 +1,15 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, Router } from '@angular/router';
+import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 
-/**
- * Requiere sesion activa y rol 'admin' (claim del token local o de Microsoft).
- * Si no hay sesion redirige a /login; si no es admin redirige a home.
- */
 @Injectable({ providedIn: 'root' })
 export class AdminRoleGuard implements CanActivate {
 
   constructor(
     private authService: AuthService,
+    private msalService: MsalService,
     private router: Router
   ) {}
 
@@ -21,12 +19,13 @@ export class AdminRoleGuard implements CanActivate {
       return true;
     }
 
+    // Si el usuario no esta logueado, MsalGuard redirige a login.
+    // Este guard se encarga de verificar el rol una vez autenticado.
     if (!this.authService.isLoggedIn()) {
-      this.router.navigate(['/login']);
       return false;
     }
 
-    // Verificar que el usuario tiene rol admin
+    // Verificar que el usuario tiene rol admin (claim 'roles' del ID token)
     if (this.authService.isAdmin()) {
       return true;
     }

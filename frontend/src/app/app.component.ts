@@ -1,6 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
 import {
   MsalBroadcastService,
   MsalService
@@ -17,7 +16,6 @@ import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
 
 import { environment } from '../environments/environment';
-import { LocalAuthService } from './auth/local-auth.service';
 import { CartItem, CartService } from './services/cart.service';
 
 @Component({
@@ -65,9 +63,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private msalService: MsalService,
     private msalBroadcastService: MsalBroadcastService,
     private cartService: CartService,
-    private http: HttpClient,
-    private localAuth: LocalAuthService,
-    private router: Router
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -126,11 +122,6 @@ export class AppComponent implements OnInit, OnDestroy {
         this.checkLoginStatus();
       });
 
-    // Sesion local (login con email + contrasena): reaccionar a login/logout
-    this.localAuth.session$
-      .pipe(takeUntil(this.destroying$))
-      .subscribe(() => this.checkLoginStatus());
-
     // Escuchar cambios del carrito
     this.cartService.items$
       .pipe(takeUntil(this.destroying$))
@@ -145,28 +136,16 @@ export class AppComponent implements OnInit, OnDestroy {
 
   checkLoginStatus(): void {
 
-    // 1) Cuenta local (email + contrasena) tiene prioridad.
-    const localUser = this.localAuth.getUser();
-    if (this.localAuth.isLoggedIn() && localUser) {
-      this.isLoggedIn = true;
-      this.userEmail = localUser.email;
-      this.userRoles = localUser.role ? [localUser.role] : [];
-      this.isAdmin = this.userRoles.includes('admin');
-      return;
-    }
-
-    // 2) Cuenta Microsoft (MSAL).
     const accounts = this.msalService.instance.getAllAccounts();
 
-    if (accounts.length === 0) {
-      this.isLoggedIn = false;
+    this.isLoggedIn = accounts.length > 0;
+
+    if (!this.isLoggedIn) {
       this.userRoles = [];
       this.userEmail = '';
       this.isAdmin = false;
       return;
     }
-
-    this.isLoggedIn = true;
 
     let activeAccount =
       this.msalService.instance.getActiveAccount();
@@ -188,26 +167,18 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   login(): void {
-    // La pagina de login ofrece cuenta local o Microsoft.
-    this.router.navigate(['/login']);
+
+    this.msalService.loginRedirect({
+      scopes: environment.scopes
+    });
   }
 
   logout(): void {
 
-    // Cerrar la sesion local (si existe)
-    this.localAuth.logout();
-
-    // Cerrar sesion Microsoft (si existe)
-    if (this.msalService.instance.getAllAccounts().length > 0) {
-      this.msalService.logoutRedirect({
-        postLogoutRedirectUri:
-          environment.msalConfig.auth.postLogoutRedirectUri
-      });
-      return;
-    }
-
-    this.checkLoginStatus();
-    this.router.navigate(['/']);
+    this.msalService.logoutRedirect({
+      postLogoutRedirectUri:
+        environment.msalConfig.auth.postLogoutRedirectUri
+    });
   }
 
   hasRole(role: string): boolean {

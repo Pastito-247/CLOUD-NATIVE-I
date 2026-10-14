@@ -56,17 +56,6 @@ cors:
   allowed-origins: "http://localhost:4200,https://pastito-247.github.io"
 
 # ============================================================
-# JWT local (login con cuentas creadas en /register).
-# users-service lo firma (HS256) y este servicio lo valida con el
-# MISMO secreto compartido.
-# ============================================================
-app:
-  security:
-    local-jwt:
-      issuer: ${LOCAL_JWT_ISSUER:tuki-tech-local}
-      secret: ${LOCAL_JWT_SECRET:tuki-tech-local-dev-secret-change-me-0123456789}
-
-# ============================================================
 # Configuracion centralizada de mensajeria (RabbitMQ).
 # Unica fuente de verdad para nombres de exchanges, colas y
 # routing keys. Ningun nombre debe escribirse en el codigo de negocio.

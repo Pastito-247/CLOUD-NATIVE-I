@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { AuthGuard } from './auth/auth.guard';
+import { MsalGuard } from '@azure/msal-angular';
 import { AdminRoleGuard } from './auth/admin-role.guard';
 import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
@@ -13,23 +13,23 @@ const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
-  // Requiere estar autenticado (cuenta local o Microsoft)
+  // Requiere estar autenticado (cualquier usuario de Azure AD)
   {
     path: 'my-orders',
     component: MyOrdersComponent,
-    canActivate: [AuthGuard]
+    canActivate: [MsalGuard]
   },
   {
     path: 'admin',
     component: AdminComponent,
-    // AuthGuard: requiere estar autenticado (login)
-    // AdminRoleGuard: ademas requiere rol 'admin' en el token (local o Microsoft)
-    canActivate: [AuthGuard, AdminRoleGuard]
+    // MsalGuard: requiere estar autenticado (login)
+    // AdminRoleGuard: ademas requiere rol 'admin' claim en el ID token
+    canActivate: [MsalGuard, AdminRoleGuard]
   },
   {
     path: 'admin/rabbitmq',
     component: RabbitmqAdminComponent,
-    canActivate: [AuthGuard, AdminRoleGuard]
+    canActivate: [MsalGuard, AdminRoleGuard]
   },
   { path: '**', redirectTo: '' }
 ];

@@ -46,18 +46,6 @@
         autocomplete="email"
         required>
 
-      <label class="register-label" for="password">Contraseña</label>
-      <input
-        id="password"
-        name="password"
-        class="register-input"
-        type="password"
-        [(ngModel)]="password"
-        placeholder="Mínimo 6 caracteres"
-        autocomplete="new-password"
-        minlength="6"
-        required>
-
       <label class="register-label" for="role">Tipo de cuenta</label>
       <select id="role" name="role" class="register-input" [(ngModel)]="role">
         <option value="customer">Cliente</option>

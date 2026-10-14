@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { AuthService } from '../auth/auth.service';
+import { MsalService } from '@azure/msal-angular';
 import { environment } from '../../environments/environment';
 
 @Component({
@@ -72,7 +72,7 @@ export class AdminComponent implements OnInit {
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService
+    private msalService: MsalService
   ) {}
 
   ngOnInit(): void {
@@ -81,8 +81,17 @@ export class AdminComponent implements OnInit {
   }
 
   checkUserRoles(): void {
-    this.userRoles = this.authService.getRoles();
-    this.isAdmin = this.userRoles.includes('admin');
+    const accounts = this.msalService.instance.getAllAccounts();
+
+    if (accounts.length > 0) {
+      const account =
+        this.msalService.instance.getActiveAccount() || accounts[0];
+
+      const idTokenClaims = account.idTokenClaims as any;
+
+      this.userRoles = idTokenClaims?.roles || [];
+      this.isAdmin = this.userRoles.includes('admin');
+    }
   }
 
   loadAdminData(): void {

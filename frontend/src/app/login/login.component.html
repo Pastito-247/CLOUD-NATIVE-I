@@ -18,45 +18,11 @@
     <h2>Iniciar Sesión</h2>
 
     <p class="login-text">
-      Ingresa con la cuenta que creaste en el registro o con tu cuenta de
-      Microsoft.
+      Inicia sesión con tu cuenta de Azure AD para acceder
+      al panel de administración de Tuki-Tech.
     </p>
 
-    <form class="login-form" (ngSubmit)="loginLocal()">
-
-      <label class="login-label" for="email">Email</label>
-      <input
-        id="email"
-        name="email"
-        class="login-input"
-        type="email"
-        [(ngModel)]="email"
-        placeholder="tucorreo@ejemplo.com"
-        autocomplete="email"
-        required>
-
-      <label class="login-label" for="password">Contraseña</label>
-      <input
-        id="password"
-        name="password"
-        class="login-input"
-        type="password"
-        [(ngModel)]="password"
-        placeholder="Tu contraseña"
-        autocomplete="current-password"
-        required>
-
-      <div *ngIf="errorMessage" class="login-message error">{{ errorMessage }}</div>
-
-      <button type="submit" class="login-button" [disabled]="loading">
-        {{ loading ? 'Ingresando...' : 'Iniciar Sesión' }}
-      </button>
-
-    </form>
-
-    <div class="login-divider"><span>o</span></div>
-
-    <button type="button" (click)="loginMicrosoft()" class="login-button login-button-outline">
+    <button (click)="login()" class="login-button">
       <span class="ms-icon" aria-hidden="true">
         <svg viewBox="0 0 23 23" width="18" height="18">
           <rect width="11" height="11" fill="#f35325" x="1" y="1"/>
@@ -65,12 +31,10 @@
           <rect width="11" height="11" fill="#ffba08" x="12" y="12"/>
         </svg>
       </span>
-      Iniciar Sesión con Microsoft
+      Iniciar Sesión con Azure AD
     </button>
 
-    <p class="login-hint">
-      ¿No tienes cuenta? <a routerLink="/register">Regístrate</a>
-    </p>
+    <p class="login-hint">🔒 Solo usuarios con rol de administrador pueden acceder al panel.</p>
 
   </div>
 

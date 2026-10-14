@@ -25,11 +25,7 @@ public class User {
     @NotBlank(message = "Role is required")
     @Column(nullable = false)
     private String role;
-
-    // Hash BCrypt de la contrasena de la cuenta local (null para cuentas solo Azure AD).
-    @Column(name = "password_hash")
-    private String passwordHash;
-
+    
     @Column(name = "azure_id")
     private String azureId;
     
@@ -69,10 +65,7 @@ public class User {
     
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
-
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
-
+    
     public String getAzureId() { return azureId; }
     public void setAzureId(String azureId) { this.azureId = azureId; }
     
