@@ -10,7 +10,13 @@ import java.util.List;
 @Entity
 @Table(name = "orders")
 public class Order {
-    
+
+    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_CONFIRMED = "CONFIRMED";
+    public static final String STATUS_SHIPPED = "SHIPPED";
+    public static final String STATUS_DELIVERED = "DELIVERED";
+    public static final String STATUS_CANCELLED = "CANCELLED";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -24,7 +30,7 @@ public class Order {
     private BigDecimal total;
     
     @Column(nullable = false)
-    private String status = "PENDING";
+    private String status = STATUS_PENDING;
     
     @Column(columnDefinition = "TEXT")
     private String shippingAddress;

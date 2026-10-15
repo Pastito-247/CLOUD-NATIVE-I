@@ -4,6 +4,8 @@ import com.ecommerce.orders.event.OrderCreatedEvent;
 import com.ecommerce.orders.messaging.OrderEventPublisher;
 import com.ecommerce.orders.model.Order;
 import com.ecommerce.orders.repository.OrderRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,7 +14,9 @@ import java.util.Optional;
 
 @Service
 public class OrderService {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+
     @Autowired
     private OrderRepository orderRepository;
 
@@ -36,6 +40,9 @@ public class OrderService {
     }
     
     public Order createOrder(Order order) {
+        // El estado inicial lo define el backend: un pedido nace PENDING y solo
+        // se confirma cuando el pago se procesa correctamente (receipt.generated).
+        order.setStatus(Order.STATUS_PENDING);
         Order saved = orderRepository.save(order);
         orderEventPublisher.publishOrderCreated(new OrderCreatedEvent(
                 saved.getId(),
@@ -44,6 +51,20 @@ public class OrderService {
                 saved.getShippingAddress(),
                 saved.getCreatedAt()));
         return saved;
+    }
+
+    /**
+     * Confirma el pedido cuando el pago se proceso correctamente. Es idempotente:
+     * si ya estaba confirmado (u otro estado avanzado) no hace nada.
+     */
+    public void confirmOrder(Long orderId) {
+        orderRepository.findById(orderId).ifPresentOrElse(order -> {
+            if (Order.STATUS_PENDING.equals(order.getStatus())) {
+                order.setStatus(Order.STATUS_CONFIRMED);
+                orderRepository.save(order);
+                log.info("Pedido {} confirmado tras el pago exitoso", orderId);
+            }
+        }, () -> log.warn("No se encontro el pedido {} para confirmar", orderId));
     }
     
     public Order updateOrder(Long id, Order orderDetails) {

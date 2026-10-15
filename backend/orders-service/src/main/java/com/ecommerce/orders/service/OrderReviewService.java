@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -25,14 +26,18 @@ public class OrderReviewService {
     private static final Logger log = LoggerFactory.getLogger(OrderReviewService.class);
 
     private final OrderReviewRepository orderReviewRepository;
+    private final OrderService orderService;
     private final ObjectMapper objectMapper;
 
     public OrderReviewService(OrderReviewRepository orderReviewRepository,
+                              OrderService orderService,
                               ObjectMapper objectMapper) {
         this.orderReviewRepository = orderReviewRepository;
+        this.orderService = orderService;
         this.objectMapper = objectMapper;
     }
 
+    @Transactional
     public OrderReview saveForReview(ReceiptGeneratedEvent event) {
         if (event == null || event.receiptId() == null) {
             throw new IllegalArgumentException("Evento de boleta invalido: sin receiptId");
@@ -51,6 +56,9 @@ public class OrderReviewService {
                 serializeItems(event.items()));
 
         OrderReview saved = orderReviewRepository.save(review);
+        // El pago se proceso OK (hay boleta): confirmamos el pedido. Si el pago
+        // no se completa, no llega este evento y el pedido permanece PENDING.
+        orderService.confirmOrder(event.orderId());
         log.info("Pedido {} registrado para revision (id={}, boleta {})",
                 event.orderId(), saved.getId(), event.receiptId());
         return saved;

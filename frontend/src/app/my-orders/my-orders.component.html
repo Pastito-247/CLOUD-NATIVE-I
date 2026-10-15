@@ -1,9 +1,18 @@
 <div class="orders-container">
 
   <div class="orders-header">
-    <h2>Mis Compras</h2>
-    <p class="orders-subtitle">Historial de tus órdenes en Tuki-Tech.</p>
+    <div>
+      <h2>Mis Compras</h2>
+      <p class="orders-subtitle">Historial de tus órdenes en Tuki-Tech.</p>
+    </div>
+    <button class="btn-refresh" type="button" (click)="refresh()" [disabled]="loading">
+      Actualizar
+    </button>
   </div>
+
+  <p class="orders-hint" *ngIf="!loading && !error && hasPendingOrders">
+    Tu pago está en proceso. El estado se actualizará automáticamente.
+  </p>
 
   <!-- Cargando -->
   <div *ngIf="loading" class="skeleton-list">
