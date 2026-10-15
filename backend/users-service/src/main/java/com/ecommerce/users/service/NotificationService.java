@@ -23,9 +23,11 @@ public class NotificationService {
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
     private final NotificationRepository notificationRepository;
+    private final EmailService emailService;
 
-    public NotificationService(NotificationRepository notificationRepository) {
+    public NotificationService(NotificationRepository notificationRepository, EmailService emailService) {
         this.notificationRepository = notificationRepository;
+        this.emailService = emailService;
     }
 
     /**
@@ -64,10 +66,14 @@ public class NotificationService {
                 .formatted(event.orderId(), event.total())
                 + "Adjuntamos tu boleta en PDF (" + event.pdfPath() + "). Gracias por comprar en Tuki-Tech.";
 
+        // Envio real del correo al mail del usuario (con la boleta adjunta).
+        // Si falla, lanza excepcion -> el consumidor reintenta y luego va a la DLQ.
+        emailService.sendReceiptEmail(event);
+
         Notification notification = new Notification(
                 event.orderId(), event.userEmail(), subject, message);
         Notification saved = notificationRepository.save(notification);
-        log.info("Correo de confirmacion {} enviado a {} (boleta {})",
+        log.info("Correo de confirmacion {} procesado para {} (boleta {})",
                 saved.getId(), event.userEmail(), event.receiptId());
         return saved;
     }
