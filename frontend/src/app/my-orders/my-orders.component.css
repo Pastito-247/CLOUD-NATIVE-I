@@ -6,6 +6,11 @@
 
 .orders-header {
   margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .orders-header h2 {
@@ -18,6 +23,38 @@
   color: var(--text-secondary);
   font-size: 0.9rem;
   margin-top: 0.25rem;
+}
+
+.btn-refresh {
+  background: var(--green-700);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.55rem 1.2rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-refresh:hover:not(:disabled) {
+  background: var(--green-800);
+}
+
+.btn-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.orders-hint {
+  background: var(--green-50);
+  border: 1px solid var(--green-100);
+  color: var(--green-800);
+  border-radius: var(--radius);
+  padding: 0.7rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
 }
 
 /* ========================================================= */

@@ -302,7 +302,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.cartService.clearCart();
         this.shippingAddress = '';
         this.checkoutLoading = false;
-        this.cartMessage = '¡Compra realizada! Estamos procesando tu pago.';
+        this.cartMessage = '¡Compra registrada! Tu pedido está Pendiente; se confirmará cuando se procese el pago. Revísalo en "Mis compras".';
         this.cartMessageIsError = false;
       },
       error: (error) => {
