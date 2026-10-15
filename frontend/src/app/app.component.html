@@ -158,7 +158,7 @@
         </div>
 
         <div class="cart-item-right">
-          <p class="cart-item-price">{{ item.product.price * item.quantity | currency }}</p>
+          <p class="cart-item-price">{{ item.product.price * item.quantity | currency:'CLP':'symbol-narrow':'1.0-0' }}</p>
           <button class="cart-item-remove" (click)="removeItem(item)">Eliminar</button>
         </div>
 
@@ -170,7 +170,7 @@
 
       <div class="cart-total">
         <span>Total</span>
-        <span class="cart-total-amount">{{ getCartTotal() | currency }}</span>
+        <span class="cart-total-amount">{{ getCartTotal() | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
       </div>
 
       <input

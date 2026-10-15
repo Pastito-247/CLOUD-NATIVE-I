@@ -155,7 +155,7 @@
 
         <h3 class="product-name" title="{{ product.name }}">{{ product.name }}</h3>
 
-        <p class="price">{{ product.price | currency }}</p>
+        <p class="price">{{ product.price | currency:'CLP':'symbol-narrow':'1.0-0' }}</p>
 
         <p class="description">{{ product.description }}</p>
 
@@ -210,7 +210,7 @@
 
       <h2 class="modal-title">{{ selectedProduct.name }}</h2>
 
-      <p class="modal-price">{{ selectedProduct.price | currency }}</p>
+      <p class="modal-price">{{ selectedProduct.price | currency:'CLP':'symbol-narrow':'1.0-0' }}</p>
 
       <p class="modal-description">
         {{ selectedProduct.description || 'Sin descripción disponible.' }}

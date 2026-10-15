@@ -97,7 +97,7 @@ messaging:
     stock-decrement-dlq: stock.decrement.dlq
   # Simulacion del procesamiento de pago (sin pasarela real).
   processing:
-    delay-ms: ${PAYMENT_DELAY_MS:3000}
+    delay-ms: ${PAYMENT_DELAY_MS:5000}
   # Generacion de la boleta PDF.
   receipt:
     storage-dir: ${RECEIPT_STORAGE_DIR:receipts}

@@ -51,6 +51,32 @@ spring:
         prefetch: 1
         default-requeue-rejected: false
 
+  # Email (SMTP Gmail). El correo REAL de confirmacion + boleta se activa con
+  # MAIL_ENABLED=true y credenciales SMTP_* (contrasena de aplicacion de Gmail).
+  # Si MAIL_ENABLED es false, el envio real se omite y solo se registra/loguea.
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+# Notificaciones por correo (envio real via SMTP).
+notification:
+  mail:
+    enabled: ${MAIL_ENABLED:false}
+    from: ${MAIL_FROM:}
+    from-name: ${MAIL_FROM_NAME:Tuki-Tech}
+
 # CORS Configuration
 cors:
   allowed-origins: "http://localhost:4200,https://pastito-247.github.io"
