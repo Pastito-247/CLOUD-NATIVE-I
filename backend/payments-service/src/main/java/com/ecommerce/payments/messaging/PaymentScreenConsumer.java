@@ -89,8 +89,14 @@ public class PaymentScreenConsumer {
             } else {
                 log.error("Reintentos agotados para el pago {}. Enviando a la DLQ '{}'",
                         event.paymentId(), props.getQueue().getPaymentScreenDlq());
-                paymentService.markFailed(event.paymentId());
+                try {
+                    paymentService.markFailed(event.paymentId());
+                } catch (Exception markEx) {
+                    log.warn("No se pudo marcar como FAILED el pago {}: {}",
+                            event.paymentId(), markEx.getMessage());
+                }
                 // requeue=false -> el broker enruta el mensaje al dead-letter exchange.
+                // El nack SIEMPRE se ejecuta para no dejar el mensaje sin ack (poison message).
                 channel.basicNack(deliveryTag, false, false);
             }
         }
