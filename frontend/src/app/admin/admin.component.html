@@ -228,7 +228,7 @@
             <td>
               <span class="cell-name">{{ product.name }}</span>
             </td>
-            <td class="cell-price">{{ product.price | currency }}</td>
+            <td class="cell-price">{{ product.price | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
             <td>
               <span class="cell-tag">{{ product.category }}</span>
             </td>
@@ -558,7 +558,7 @@
 
             <td>#{{ order.id }}</td>
             <td class="cell-email">{{ order.userEmail }}</td>
-            <td class="cell-price">{{ order.total | currency }}</td>
+            <td class="cell-price">{{ order.total | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
             <td>
               <select
                 [(ngModel)]="order.status"

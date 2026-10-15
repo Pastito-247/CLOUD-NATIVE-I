@@ -26,9 +26,11 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -189,7 +191,10 @@ public class ReceiptService {
     }
 
     private String formatMoney(BigDecimal value) {
-        return "$" + (value == null ? "0" : value.toPlainString());
+        NumberFormat clp = NumberFormat.getNumberInstance(Locale.forLanguageTag("es-CL"));
+        clp.setMinimumFractionDigits(0);
+        clp.setMaximumFractionDigits(0);
+        return "$" + clp.format(value == null ? BigDecimal.ZERO : value);
     }
 
     private String serializeItems(List<OrderItemEvent> items) {

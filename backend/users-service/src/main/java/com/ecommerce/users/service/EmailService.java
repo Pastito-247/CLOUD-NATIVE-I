@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.text.NumberFormat;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Envio del correo real de confirmacion de pago con la boleta adjunta (SMTP).
@@ -89,7 +91,7 @@ public class EmailService {
             log.warn("Boleta {} no encontrada en '{}'; se envia el correo sin adjunto", event.receiptId(), path);
             return;
         }
-        helper.addAttachment(file.getName(), new FileSystemResource(file));
+        helper.addAttachment(file.getName(), new FileSystemResource(file), "application/pdf");
         log.info("Boleta adjuntada al correo: {}", file.getName());
     }
 
@@ -99,7 +101,7 @@ public class EmailService {
         html.append("<h2>Gracias por tu compra en Tuki-Tech</h2>");
         html.append("<p>Hola, tu pedido <b>#").append(event.orderId())
                 .append("</b> fue pagado y confirmado.</p>");
-        html.append("<p>Total pagado: <b>$").append(event.total()).append("</b></p>");
+        html.append("<p>Total pagado: <b>").append(formatClp(event.total())).append("</b></p>");
         appendItems(html, event.items());
         html.append("<p>Adjuntamos tu boleta en PDF a este correo.</p>");
         html.append("<p style=\"color:#666;font-size:12px\">Tuki-Tech</p>");
@@ -117,9 +119,16 @@ public class EmailService {
         for (OrderItemEvent item : items) {
             html.append("<tr><td>").append(item.productName())
                     .append("</td><td>").append(item.quantity())
-                    .append("</td><td>$").append(item.unitPrice())
+                    .append("</td><td>").append(formatClp(item.unitPrice()))
                     .append("</td></tr>");
         }
         html.append("</table>");
+    }
+
+    private String formatClp(java.math.BigDecimal value) {
+        NumberFormat clp = NumberFormat.getNumberInstance(Locale.forLanguageTag("es-CL"));
+        clp.setMinimumFractionDigits(0);
+        clp.setMaximumFractionDigits(0);
+        return "$" + clp.format(value == null ? java.math.BigDecimal.ZERO : value);
     }
 }

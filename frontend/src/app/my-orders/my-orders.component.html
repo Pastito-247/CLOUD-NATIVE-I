@@ -47,7 +47,7 @@
       <div class="order-card-body">
         <div class="order-field">
           <span class="field-label">Total</span>
-          <span class="field-value order-total">{{ order.total | currency }}</span>
+          <span class="field-value order-total">{{ order.total | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
         </div>
 
         <div class="order-field">

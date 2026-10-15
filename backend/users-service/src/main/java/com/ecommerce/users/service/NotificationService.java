@@ -10,6 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.text.NumberFormat;
+import java.util.Locale;
+
 /**
  * Logica de negocio de notificaciones. No conoce RabbitMQ: es invocada desde
  * los consumidores.
@@ -40,8 +44,8 @@ public class NotificationService {
         failIfRequested(event.userEmail(), "notificar el pago " + event.paymentId());
 
         String subject = "Estamos procesando tu pago #" + event.paymentId();
-        String message = "Hola, estamos procesando tu pago #%d por un total de $%s. "
-                .formatted(event.paymentId(), event.amount())
+        String message = "Hola, estamos procesando tu pago #%d por un total de %s. "
+                .formatted(event.paymentId(), formatClp(event.amount()))
                 + "Te avisaremos cuando se confirme.";
 
         Notification notification = new Notification(
@@ -62,8 +66,8 @@ public class NotificationService {
         failIfRequested(event.userEmail(), "confirmar el pedido de la boleta " + event.receiptId());
 
         String subject = "Confirmacion de tu pedido #" + event.orderId();
-        String message = "Hola, tu pedido #%d fue pagado y confirmado. Total: $%s. "
-                .formatted(event.orderId(), event.total())
+        String message = "Hola, tu pedido #%d fue pagado y confirmado. Total: %s. "
+                .formatted(event.orderId(), formatClp(event.total()))
                 + "Adjuntamos tu boleta en PDF (" + event.pdfPath() + "). Gracias por comprar en Tuki-Tech.";
 
         // Envio real del correo al mail del usuario (con la boleta adjunta).
@@ -88,8 +92,8 @@ public class NotificationService {
         failIfRequested(event.userEmail(), "avisar el pedido " + event.orderId());
 
         String subject = "Recibimos tu pedido #" + event.orderId();
-        String message = "Hola, recibimos tu pedido #%d por un total de $%s. "
-                .formatted(event.orderId(), event.total())
+        String message = "Hola, recibimos tu pedido #%d por un total de %s. "
+                .formatted(event.orderId(), formatClp(event.total()))
                 + "Lo estamos procesando; te avisaremos cuando se confirme el pago.";
 
         Notification notification = new Notification(
@@ -120,6 +124,13 @@ public class NotificationService {
         log.info("Correo de bienvenida {} enviado a {} (usuario {})",
                 saved.getId(), event.email(), event.userId());
         return saved;
+    }
+
+    private String formatClp(BigDecimal value) {
+        NumberFormat clp = NumberFormat.getNumberInstance(Locale.forLanguageTag("es-CL"));
+        clp.setMinimumFractionDigits(0);
+        clp.setMaximumFractionDigits(0);
+        return "$" + clp.format(value == null ? BigDecimal.ZERO : value);
     }
 
     private void failIfRequested(String email, String action) {
