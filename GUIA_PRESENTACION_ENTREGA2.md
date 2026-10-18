@@ -33,7 +33,7 @@ docker exec rabbitmq1 rabbitmqctl cluster_status
 #   -> {nodes,[{disc,['rabbit@rabbitmq1','rabbit@rabbitmq2']}]}  (2 nodos)
 
 # 3) Backend en EC2 (6 servicios activos)
-ssh -i .\tuki-key.pem ubuntu@184.192.252.196 "systemctl is-active tuki-products tuki-categories tuki-users tuki-orders tuki-rabbitmq-admin tuki-payments"
+ssh -i .\tuki-key.pem ubuntu@184.192.252.196 "systemctl is-active tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin tuki-payments"
 #   -> active (x6)
 
 # 4) API Gateway responde (endpoint público, sin token)
@@ -45,6 +45,38 @@ curl.exe -i https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/rabbit/qu
 #   -> 401
 ```
 
+### A.1b — Conectar el EC2 a tu RabbitMQ local (túnel SSH)  ⚠️ obligatorio
+
+El backend corre en **EC2**, pero las colas de la demo deben verse en **tu** RabbitMQ
+local (`localhost:15672`). Como el EC2 no puede alcanzar tu `localhost`, el EC2 se
+conecta a tu PC por un **túnel SSH inverso** (`ssh -R`), sin instalar nada extra.
+
+**1) Abrir el túnel** (ventana propia, **déjala abierta toda la demo**):
+
+```powershell
+ssh -i .\tuki-key.pem -N -R 127.0.0.1:5672:127.0.0.1:5672 -R 127.0.0.1:15672:127.0.0.1:15672 ubuntu@184.192.252.196
+```
+
+- `127.0.0.1:5672` = en el EC2 se abre el puerto AMQP y el tráfico va a tu PC.
+- `127.0.0.1:15672` = igual para la Management API (la que consulta `/admin/rabbit`).
+
+**2) Verificar que el EC2 llega al broker LOCAL:**
+
+```powershell
+ssh -i .\tuki-key.pem ubuntu@184.192.252.196 "curl -s -u tuki:tuki http://127.0.0.1:15672/api/overview | head -c 60"
+#   -> {"management_version":"3.13.7",...}   (versión del broker LOCAL, no CloudAMQP)
+```
+
+> **La config de los 6 servicios en el EC2 ya quedó aplicada** para usar el broker
+> local: `RABBITMQ_HOST=127.0.0.1`, `RABBITMQ_PORT=5672`, `RABBITMQ_SSL=false`,
+> `tuki/tuki`, vhost `/`; el admin además `RABBITMQ_MANAGEMENT_URL=http://127.0.0.1:15672`.
+> Vive en *drop-ins* de systemd
+> (`/etc/systemd/system/tuki-<servicio>.service.d/override-rabbitmq.conf`).
+> Si algún día se revierte a CloudAMQP, reaplica con el **Anexo G**.
+
+**Si el túnel se cae** (se nota porque las colas dejan de recibir mensajes), vuelve a
+ejecutar el comando del paso 1: los servicios se reconectan solos.
+
 ### A.2 Ventanas que dejar abiertas (en pestañas, en este orden)
 
 1. Frontend: **https://pastito-247.github.io/CLOUD-NATIVE-I/** (logueado como `admin`).
@@ -54,9 +86,11 @@ curl.exe -i https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/rabbit/qu
 5. RabbitMQ UI nodo 2: **http://localhost:15673** (`tuki` / `tuki`).
 6. Editor con el árbol de `backend/payments-service/src/main/java/com/ecommerce/payments/`.
 7. Frontend redirigido a **/admin/rabbitmq** (vista de administración).
+8. Terminal del **túnel SSH** (A.1b) — **no cerrarla**; si se cae, las colas se dejan de llenar.
 
 ### A.3 Terminales
 
+- **Terminal 0 (túnel):** el `ssh -R` de la sección **A.1b**, corriendo y sin cerrar.
 - Terminal 1: PowerShell en la raíz del repo (comandos `docker`/`curl`).
 - Terminal 2: SSH a EC2 para ver logs: `ssh -i .\tuki-key.pem ubuntu@184.192.252.196`
   y dentro `journalctl -u tuki-payments -f` (o `-u tuki-orders`, `-u tuki-users`).
@@ -74,6 +108,7 @@ curl.exe -i https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/rabbit/qu
 | Backend EC2 | products 8081, categories 8082, users 8083, orders 8084, **rabbitmq-admin 8085**, **payments 8086** |
 | EC2 | `184.192.252.196` (user `ubuntu`, llave `tuki-key.pem`) |
 | Cluster RabbitMQ | nodos `rabbitmq1` (:15672) y `rabbitmq2` (:15673), cred. `tuki/tuki` |
+| Broker que usa el EC2 | `127.0.0.1:5672`/`:15672` **vía túnel SSH** (`ssh -R`) → RabbitMQ local |
 | Vista admin | `/admin/rabbitmq` |
 
 ---
@@ -154,8 +189,24 @@ perder el mensaje, y al agotar los intentos hace **`basicNack(requeue=false)`**;
 `payment.dlx` (direct) a `payment.screen.dlq`". Si el `markFailed` falla, igual se hace NACK
 (por eso el fix del poison message).
 
-**3.3 Muestra la DLQ con 1 mensaje**: RabbitMQ UI (`:15672`) → Queues → `payment.screen.dlq` (Ready = 1).
-Limpia luego con **Purge** para no dejarlo sucio.
+**3.3 Evidencia de la DLQ**: el mensaje aterriza en `payment.screen.dlq`, pero el
+`DeadLetterLogConsumer` **la consume y hace ACK al instante**, así que en la UI casi no
+queda `Ready = 1` (**es normal, no lo tomes como error**). La evidencia sólida es el
+**log** en Terminal 2:
+
+```bash
+[DLQ:payment.screen] Mensaje no entregado registrado. motivo=[{reason=rejected, count=1,
+  exchange=, routing-keys=[payment.screen.queue], queue=payment.screen.queue}]
+  payload={"paymentId":999999,...,"userEmail":"fail@demo.cl",...}
+```
+
+*Frase:* "el consumidor hizo `basicNack(requeue=false)`, el broker enrutó por `payment.dlx`
+(direct) hacia `payment.screen.dlq`, y el `DeadLetterLogConsumer` lo registró y confirmó
+con ACK para no dejarlo atascado".
+
+> **Truco** para ver `Ready = 1` en la UI: manda el pago `fail@` y abre la cola
+> `payment.screen.dlq` **rápido** (antes de ~1 s) para pillar el mensaje antes de que el
+> log-consumer lo tome.
 
 ### Bloque 4 — Microservicio admin REST (1 min) — rúbrica 6–8 (30%)
 
@@ -207,6 +258,9 @@ Puntos a destacar:
 
 1. **docker-compose levanta RabbitMQ**: en Terminal 1, `docker compose up -d` → `docker ps`
    (rabbitmq1/rabbitmq2). `docker-compose.yml` (2 servicios `rabbitmq:3.13-management`, cookie compartida).
+   *Nota técnica:* el backend en **EC2** consume este clúster local a través de un **túnel SSH
+   inverso** (`ssh -R`, sección A.1b): en el EC2 los servicios apuntan a `127.0.0.1:5672` y el
+   tráfico AMQP aterriza en este `rabbitmq1`.
 2. **2 nodos en clúster**: `docker exec rabbitmq1 rabbitmqctl cluster_status` → 2 nodos `disc`.
    Abre :15672 y :15673: **ambas UIs muestran las mismas colas** (topología compartida del clúster).
 3. **Exchanges direct y topic**: en la UI de RabbitMQ → Exchanges:
@@ -324,6 +378,9 @@ clúster RabbitMQ de dos nodos levantado con docker-compose. Gracias."
 | `curl` al Gateway da 401 en `/api/public/...` | authorizer mal aplicado a la ruta pública | revisar la Route (debe ser `Auth: NONE`) |
 | La DLQ no recibe el mensaje del `fail@` | el consumidor no hizo NACK (bug poison) | está corregido en `PaymentScreenConsumer`; revisar logs `Reintentos agotados` |
 | `cluster_status` muestra 1 nodo | nodos sin unir / cookie distinta | `docker compose down -v` y `up -d`; verificar `RABBITMQ_ERLANG_COOKIE` |
+| Las colas dejan de llenarse / están vacías en `localhost:15672` | **túnel SSH caído** | re-ejecutar el `ssh -R` de **A.1b**; los servicios se reconectan solos |
+| No aparece nada y el EC2 no conecta (o va a CloudAMQP) | config del EC2 revertida | reaplicar **Anexo G** y `systemctl restart` de los 6 servicios |
+| `/admin/rabbit` lista colas pero no coinciden con tu local | management apunta a CloudAMQP | en el admin, `RABBITMQ_MANAGEMENT_URL=http://127.0.0.1:15672` (Anexo G) |
 | Correo no llega | SMTP / `MAIL_ENABLED` | es no bloqueante para el demo; muestra el log de envío |
 | Payload en cola con error de tipo | falta header `__TypeId__` | publica desde la app, no a mano por la mgmt API |
 | Token inválido en jwt.ms | audience incorrecta | el backend acepta `api://tuki-tech-api` **y** `66c0f84b-...` |
@@ -345,3 +402,63 @@ y 6, y enfoca el guion en código + RabbitMQ local (que es lo evaluado).
 | 6 | Admin REST (`POST/DELETE /queues`) | 13% | `rabbitmq-admin-service` :8085, `/api/rabbit/**` |
 | 7 | Lógica en `RabbitAdminService` | 10% | `rabbitadmin/service/RabbitAdminService.java` |
 | 8 | Validación de entrada | 7% | DTOs `@NotBlank`/`@Pattern` + `validateName` + `GlobalExceptionHandler` |
+
+---
+
+## Anexo G — Config del EC2 hacia el broker (local ↔ CloudAMQP)
+
+Los 6 servicios del EC2 toman su broker de un *drop-in* de systemd:
+`/etc/systemd/system/tuki-<servicio>.service.d/override-rabbitmq.conf`
+servicios: `tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin tuki-payments`.
+
+### G.1 Apuntar al broker LOCAL (para la demo)
+
+Contenido de `override-rabbitmq.conf` en **los 6** servicios:
+
+```ini
+[Service]
+Environment=RABBITMQ_HOST=127.0.0.1
+Environment=RABBITMQ_PORT=5672
+Environment=RABBITMQ_SSL=false
+Environment=RABBITMQ_USERNAME=tuki
+Environment=RABBITMQ_PASSWORD=tuki
+Environment=RABBITMQ_VHOST=/
+```
+
+Y en el admin, un drop-in extra
+(`/etc/systemd/system/tuki-rabbit-admin.service.d/override-management.conf`):
+
+```ini
+[Service]
+Environment=RABBITMQ_MANAGEMENT_ENABLED=true
+Environment=RABBITMQ_MANAGEMENT_URL=http://127.0.0.1:15672
+```
+
+Luego:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin tuki-payments
+systemctl is-active tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin tuki-payments
+```
+
+> Requiere el **túnel SSH** de la sección A.1b corriendo. Verifica con
+> `curl -s -u tuki:tuki http://127.0.0.1:15672/api/overview`.
+
+### G.2 Volver a CloudAMQP (fuera de la demo)
+
+En `override-rabbitmq.conf` de los 6 servicios usa:
+
+```ini
+[Service]
+Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_PORT=5671
+Environment=RABBITMQ_SSL=true
+Environment=RABBITMQ_USERNAME=<tu-usuario-cloudamqp>
+Environment=RABBITMQ_PASSWORD=<tu-password-cloudamqp>
+Environment=RABBITMQ_VHOST=<tu-vhost>
+```
+
+En el admin, `RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com`.
+Repite `daemon-reload` + `restart`. (Credenciales originales respaldadas en
+`/tmp/rabbit-bkp/` del EC2, si aún existen; si no, búscalas en el panel de CloudAMQP.)
