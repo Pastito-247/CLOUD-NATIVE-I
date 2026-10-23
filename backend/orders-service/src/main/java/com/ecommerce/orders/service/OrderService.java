@@ -32,7 +32,7 @@ public class OrderService {
     }
     
     public List<Order> getOrdersByUserEmail(String userEmail) {
-        return orderRepository.findByUserEmail(userEmail);
+        return orderRepository.findByUserEmailIgnoreCase(userEmail);
     }
     
     public List<Order> getOrdersByStatus(String status) {
