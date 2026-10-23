@@ -1,0 +1,48 @@
+# =====================================================================
+# RabbitMQ para el EC2 (1 nodo, solo acceso local).
+#
+# El backend (servicios Spring Boot via systemd) corre en la MISMA
+# instancia y se conecta a 127.0.0.1:5672. El AMQP se publica solo en
+# loopback; la Management UI (15672) se publica en todas las interfaces
+# para abrirla desde el navegador con http://IP_EC2:15672.
+#
+# Seguridad: en el Security Group abre SOLO el 15672 y restringelo a tu
+# IP (o usa un tunel SSH y vuelve a bindear a 127.0.0.1). NO abras el 5672.
+#
+# Uso en el EC2:
+#   mkdir -p ~/rabbitmq
+#   # copiar este archivo como ~/rabbitmq/docker-compose.yml
+#   cd ~/rabbitmq
+#   docker compose up -d
+#   docker compose ps
+#
+# Management UI:
+#   http://IP_EC2:15672   (tuki / tuki)
+#
+# Si cambias credenciales y el volumen ya existe, RABBITMQ_DEFAULT_*
+# se ignora. Para reinicializar (BORRA colas/mensajes):
+#   docker compose down -v && docker compose up -d
+# =====================================================================
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-tuki}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-tuki}
+    ports:
+      - "127.0.0.1:5672:5672"     # AMQP: solo loopback (el backend corre en el EC2)
+      - "15672:15672"             # Management UI: expuesto; restringir en el Security Group
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  rabbitmq-data:

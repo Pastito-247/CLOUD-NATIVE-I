@@ -6,8 +6,9 @@ usando JARs compilados en tu PC y servicios `systemd` para que corran como daemo
 - **Frontend**: sigue local (`http://localhost:4200`) llamando directo a la IP del EC2.
 - **Backend**: 6 servicios (8081-8086) en 1 instancia Ubuntu.
 - **Mensajería**: `payments-service` orquesta el flujo de pago (fanout) y
-  `orders-service`/`users-service`/`products-service` consumen sus colas en
-  RabbitMQ (CloudAMQP); `rabbitmq-admin-service` (8085) administra colas/exchanges vía REST.
+  `orders-service`/`users-service`/`products-service` consumen sus colas en un
+  **RabbitMQ propio corriendo en el mismo EC2 (Docker, 1 nodo)**;
+  `rabbitmq-admin-service` (8085) administra colas/exchanges vía REST.
 - **AUTH**: los servicios validan JWT contra Azure AD (mismo tenant configurado localmente).
 
 ---
@@ -19,12 +20,13 @@ Tu PC (Windows)
 ├── Frontend Angular  -> http://localhost:4200  (apunta a IP_EC2:808X)
 └── scp los 6 .jar
 
-EC2 (Ubuntu 22.04) - sistema systemd
+EC2 (Ubuntu 22.04) - sistema systemd + Docker
+├── rabbitmq (Docker, 1 nodo)  127.0.0.1:5672 / 127.0.0.1:15672
 ├── products-service   (8081)
 ├── categories-service (8082)
 ├── users-service      (8083)  <- arregla el puerto vacio via SERVER_PORT
 ├── orders-service     (8084)
-├── rabbitmq-admin-service (8085)  <- administra RabbitMQ (CloudAMQP)
+├── rabbitmq-admin-service (8085)  <- administra el RabbitMQ local
 └── payments-service   (8086)  <- API de pago + boleta PDF
 ```
 
@@ -127,6 +129,78 @@ mkdir -p ~/apps
 
 ---
 
+## Fase 3.5 — RabbitMQ en el EC2 (Docker, 1 nodo, solo local)
+
+El broker corre en la **misma instancia** que el backend, así que este se conecta
+por `127.0.0.1:5672`. Los puertos se publican solo en loopback: **no abras
+`5672`/`15672` en el Security Group**.
+
+### Requisitos en el EC2 (Docker + swap)
+
+Si la instancia no tiene Docker (`t3.micro`, 2 GB, ya con 6 JVMs):
+
+```bash
+# Swap de 2 GB para evitar OOM (la RAM libre es mínima)
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab
+
+# Docker Engine + Compose plugin
+curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
+sudo sh /tmp/get-docker.sh
+sudo usermod -aG docker ubuntu
+sudo systemctl enable --now docker
+```
+
+> Tras `usermod`, cierra y vuelve a abrir la sesión SSH (o usa `sudo docker`)
+> para que el usuario `ubuntu` tenga permisos sobre el daemon.
+
+### Despliegue
+
+Desde **PowerShell en la raíz del proyecto** (tu PC):
+
+```powershell
+.\scripts\deploy-rabbitmq-ec2.ps1 -Ec2Host IP_EC2 -ApplyBackendConfig
+```
+
+Ese script:
+
+1. Verifica Docker en el EC2.
+2. Copia `docker-compose.ec2.yml` como `~/rabbitmq/docker-compose.yml`.
+3. Levanta el contenedor `rabbitmq` (imagen `rabbitmq:3.13-management`, volumen
+   persistente, `restart: unless-stopped`).
+4. Con `-ApplyBackendConfig`, escribe los drop-ins de systemd y reinicia los
+   6 servicios para apuntar a `127.0.0.1:5672` (`tuki / tuki`, vhost `/`).
+
+Equivalente manual dentro del EC2:
+
+```bash
+mkdir -p ~/rabbitmq && cd ~/rabbitmq
+# copiar docker-compose.ec2.yml como docker-compose.yml
+docker compose up -d
+docker compose ps
+curl -s -u tuki:tuki http://127.0.0.1:15672/api/overview
+```
+
+Management UI desde tu PC (opción directa, sin túnel):
+
+1. En el Security Group agrega una regla **Custom TCP 15672** con origen **tu IP**.
+2. Abre `http://IP_EC2:15672` → `tuki / tuki`.
+
+Alternativa sin abrir puertos (túnel SSH de *forward*):
+
+```powershell
+ssh -i tuki-key.pem -L 15672:127.0.0.1:15672 ubuntu@IP_EC2
+# abrir http://localhost:15672  ->  tuki / tuki
+```
+
+> En `t3.micro`/`t2.micro` el broker consume ~200-300 MB. Si notas presión de
+> memoria, verifica `free -h`; los servicios Java ya usan `-Xmx256m`.
+
+---
+
 ## Fase 4 — Subir los JARs
 
 Desde **PowerShell en la raíz del proyecto** (tu PC, no en el EC2):
@@ -160,9 +234,11 @@ aprovechamos para:
   (`api://tuki-tech-api`). Se aceptan **ambos** (lista separada por coma), o el
   servicio responde `401 invalid_token` con "The required audience is missing".
 - Pasar el `issuer` correcto a los servicios (same tenant de Azure AD).
-- Pasar las credenciales de **RabbitMQ/CloudAMQP** (`RABBITMQ_*`) a products,
-  categories, orders, users, payments y rabbitmq-admin. Sin ellas el default es
-  `localhost` y no habrá conexión.
+- Pasar las credenciales del **RabbitMQ local del EC2** (`RABBITMQ_*`) a products,
+  categories, orders, users, payments y rabbitmq-admin. Los units de esta guía ya
+  apuntan a `127.0.0.1:5672` (`tuki / tuki`, vhost `/`, SSL `false`); el admin
+  además usa `RABBITMQ_MANAGEMENT_URL=http://127.0.0.1:15672`. Ajusta usuario y
+  contraseña si los cambiaste en `docker-compose.ec2.yml`.
 
 ### 1) products-service
 
@@ -181,13 +257,13 @@ Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
-Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
-Environment=RABBITMQ_PORT=5671
-Environment=RABBITMQ_SSL=true
-Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
-Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
-Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
-Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_HOST=127.0.0.1
+Environment=RABBITMQ_PORT=5672
+Environment=RABBITMQ_SSL=false
+Environment=RABBITMQ_USERNAME=tuki
+Environment=RABBITMQ_PASSWORD=tuki
+Environment=RABBITMQ_VHOST=/
+Environment=RABBITMQ_MANAGEMENT_URL=http://127.0.0.1:15672
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/products-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -214,13 +290,13 @@ Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
-Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
-Environment=RABBITMQ_PORT=5671
-Environment=RABBITMQ_SSL=true
-Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
-Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
-Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
-Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_HOST=127.0.0.1
+Environment=RABBITMQ_PORT=5672
+Environment=RABBITMQ_SSL=false
+Environment=RABBITMQ_USERNAME=tuki
+Environment=RABBITMQ_PASSWORD=tuki
+Environment=RABBITMQ_VHOST=/
+Environment=RABBITMQ_MANAGEMENT_URL=http://127.0.0.1:15672
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/categories-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -248,13 +324,13 @@ Environment=SERVER_PORT=8083
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
-Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
-Environment=RABBITMQ_PORT=5671
-Environment=RABBITMQ_SSL=true
-Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
-Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
-Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
-Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_HOST=127.0.0.1
+Environment=RABBITMQ_PORT=5672
+Environment=RABBITMQ_SSL=false
+Environment=RABBITMQ_USERNAME=tuki
+Environment=RABBITMQ_PASSWORD=tuki
+Environment=RABBITMQ_VHOST=/
+Environment=RABBITMQ_MANAGEMENT_URL=http://127.0.0.1:15672
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/users-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -281,13 +357,13 @@ Environment=JAVA_TOOL_OPTIONS=-Xmx256m
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
-Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
-Environment=RABBITMQ_PORT=5671
-Environment=RABBITMQ_SSL=true
-Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
-Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
-Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
-Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_HOST=127.0.0.1
+Environment=RABBITMQ_PORT=5672
+Environment=RABBITMQ_SSL=false
+Environment=RABBITMQ_USERNAME=tuki
+Environment=RABBITMQ_PASSWORD=tuki
+Environment=RABBITMQ_VHOST=/
+Environment=RABBITMQ_MANAGEMENT_URL=http://127.0.0.1:15672
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/orders-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -315,14 +391,14 @@ Environment=SERVER_PORT=8085
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
-Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
-Environment=RABBITMQ_PORT=5671
-Environment=RABBITMQ_SSL=true
-Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
-Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
-Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
+Environment=RABBITMQ_HOST=127.0.0.1
+Environment=RABBITMQ_PORT=5672
+Environment=RABBITMQ_SSL=false
+Environment=RABBITMQ_USERNAME=tuki
+Environment=RABBITMQ_PASSWORD=tuki
+Environment=RABBITMQ_VHOST=/
 Environment=RABBITMQ_MANAGEMENT_ENABLED=true
-Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_MANAGEMENT_URL=http://127.0.0.1:15672
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/rabbitmq-admin-service-1.0.0.jar
 Restart=on-failure
 RestartSec=10
@@ -350,13 +426,13 @@ Environment=SERVER_PORT=8086
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
 Environment=SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 Environment=CORS_ALLOWED_ORIGINS=http://localhost:4200,https://pastito-247.github.io
-Environment=RABBITMQ_HOST=leopard.lmq.cloudamqp.com
-Environment=RABBITMQ_PORT=5671
-Environment=RABBITMQ_SSL=true
-Environment=RABBITMQ_USERNAME=CAMBIAR_USUARIO
-Environment=RABBITMQ_PASSWORD=CAMBIAR_PASSWORD
-Environment=RABBITMQ_VHOST=CAMBIAR_VHOST
-Environment=RABBITMQ_MANAGEMENT_URL=https://leopard.lmq.cloudamqp.com
+Environment=RABBITMQ_HOST=127.0.0.1
+Environment=RABBITMQ_PORT=5672
+Environment=RABBITMQ_SSL=false
+Environment=RABBITMQ_USERNAME=tuki
+Environment=RABBITMQ_PASSWORD=tuki
+Environment=RABBITMQ_VHOST=/
+Environment=RABBITMQ_MANAGEMENT_URL=http://127.0.0.1:15672
 Environment=RECEIPT_STORAGE_DIR=/home/ubuntu/apps/receipts
 ExecStart=/usr/bin/java -jar /home/ubuntu/apps/payments-service-1.0.0.jar
 Restart=on-failure
@@ -497,11 +573,14 @@ Asumiendo que los JARs ya se subieron (`~/apps/`):
   audience en `application.yml`). La Fase 5 fuerza además el puerto y la
   audience por variables de entorno como respaldo.
 
-- **RabbitMQ/CloudAMQP**: `payments-service` (productor), `orders-service`,
-  `users-service` y `products-service` (consumidores) abren conexión **saliente**
-  TLS al broker (puerto 5671) al arrancar; el Security Group por defecto permite toda
-  la salida, así que no hace falta abrir nada de entrada para RabbitMQ. Si arrancan sin
-  las `RABBITMQ_*` correctas, caen por defecto a `localhost` y fallarán al conectar.
+- **RabbitMQ en el EC2**: corre como contenedor Docker (`docker-compose.ec2.yml`)
+  y publica `5672`/`15672` solo en `127.0.0.1`. `payments-service` (productor),
+  `orders-service`, `users-service` y `products-service` (consumidores) se conectan
+  por loopback al arrancar, así que **no** hay que abrir nada en el Security Group.
+  Verifica con `docker compose ps` y `curl -u tuki:tuki http://127.0.0.1:15672/api/overview`.
+  Si los servicios arrancaron con `RABBITMQ_*` incorrectas, revisa
+  `journalctl -u tuki-payments -n 100`. El volumen `rabbitmq-data` conserva colas y
+  mensajes entre reinicios del contenedor.
 
 - **CORS**: si publicas el frontend en GitHub Pages, agrega tu URL
   (ej: `https://pastito-247.github.io`) en `CORS_ALLOWED_ORIGINS` de los 6 units

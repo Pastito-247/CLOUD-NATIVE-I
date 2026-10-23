@@ -40,8 +40,21 @@ public class OrderController {
     @GetMapping("/my-orders")
     public ResponseEntity<List<Order>> getMyOrders(Authentication authentication) {
         Jwt jwt = (Jwt) authentication.getPrincipal();
-        String email = jwt.getClaimAsString("email");
-        return ResponseEntity.ok(orderService.getOrdersByUserEmail(email));
+        return ResponseEntity.ok(orderService.getOrdersByUserEmail(resolveEmail(jwt)));
+    }
+
+    /**
+     * El access token de Entra no siempre incluye el claim "email"; el usuario
+     * suele venir en "preferred_username" (o upn/unique_name segun el tenant).
+     */
+    private String resolveEmail(Jwt jwt) {
+        for (String claim : List.of("email", "preferred_username", "upn", "unique_name")) {
+            String value = jwt.getClaimAsString(claim);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return jwt.getSubject();
     }
     
     @GetMapping("/status/{status}")
