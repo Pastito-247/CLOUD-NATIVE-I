@@ -22,6 +22,9 @@ public class OrderService {
 
     @Autowired
     private OrderEventPublisher orderEventPublisher;
+
+    @Autowired
+    private com.ecommerce.orders.messaging.kafka.OrderEventPublisher kafkaOrderEventPublisher;
     
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
@@ -50,6 +53,9 @@ public class OrderService {
                 saved.getTotal(),
                 saved.getShippingAddress(),
                 saved.getCreatedAt()));
+        kafkaOrderEventPublisher.publishOrderCreated(
+                saved.getId(), null, saved.getUserEmail(), false,
+                saved.getTotal(), saved.getStatus());
         return saved;
     }
 
@@ -62,6 +68,9 @@ public class OrderService {
             if (Order.STATUS_PENDING.equals(order.getStatus())) {
                 order.setStatus(Order.STATUS_CONFIRMED);
                 orderRepository.save(order);
+                kafkaOrderEventPublisher.publishOrderStatusChanged(
+                        order.getId(), null, order.getUserEmail(), false,
+                        order.getTotal(), order.getStatus(), "ORDER_CONFIRMED");
                 log.info("Pedido {} confirmado tras el pago exitoso", orderId);
             }
         }, () -> log.warn("No se encontro el pedido {} para confirmar", orderId));

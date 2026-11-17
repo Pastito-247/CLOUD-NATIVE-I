@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import {
   MsalBroadcastService,
   MsalService
@@ -17,6 +18,7 @@ import { filter, takeUntil } from 'rxjs/operators';
 
 import { environment } from '../environments/environment';
 import { CartItem, CartService } from './services/cart.service';
+import { PublicAuthService } from './auth/public-auth.service';
 
 @Component({
   selector: 'app-root',
@@ -31,6 +33,8 @@ export class AppComponent implements OnInit, OnDestroy {
   userRoles: string[] = [];
   userEmail = '';
   isAdmin = false;
+  isPublicLoggedIn = false;
+  publicEmail = '';
 
   // Carrito
   cartItems: CartItem[] = [];
@@ -63,7 +67,9 @@ export class AppComponent implements OnInit, OnDestroy {
     private msalService: MsalService,
     private msalBroadcastService: MsalBroadcastService,
     private cartService: CartService,
-    private http: HttpClient
+    private http: HttpClient,
+    public publicAuth: PublicAuthService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -136,6 +142,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   checkLoginStatus(): void {
 
+    this.isPublicLoggedIn = this.publicAuth.isLoggedIn();
+    this.publicEmail = this.publicAuth.getEmail() || '';
+
     const accounts = this.msalService.instance.getAllAccounts();
 
     this.isLoggedIn = accounts.length > 0;
@@ -179,6 +188,17 @@ export class AppComponent implements OnInit, OnDestroy {
       postLogoutRedirectUri:
         environment.msalConfig.auth.postLogoutRedirectUri
     });
+  }
+
+  checkoutAsGuest(): void {
+    this.cartOpen = false;
+    this.router.navigate(['/checkout-invitado']);
+  }
+
+  logoutPublic(): void {
+    this.publicAuth.signOut();
+    this.isPublicLoggedIn = false;
+    this.publicEmail = '';
   }
 
   hasRole(role: string): boolean {

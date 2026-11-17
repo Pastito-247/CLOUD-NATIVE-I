@@ -349,6 +349,106 @@ Checklist:
 
 ---
 
+## EFT — configuración idempotente del API Gateway existente
+
+La fase 5 del EFT usa la instancia HTTP API ya creada
+`3cbwduklgb` en `us-east-1`; **no se crea una API nueva**. El script
+`scripts/aws/api-gateway-setup.sh` agrega/actualiza authorizers, integraciones,
+rutas, CORS, throttling y el stage `$default`.
+
+### Requisitos
+
+```bash
+export COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxx
+export COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
+bash scripts/aws/api-gateway-setup.sh
+```
+
+Variables opcionales:
+
+| Variable | Default | Uso |
+|---|---|---|
+| `API_GATEWAY_ID` | `3cbwduklgb` | API existente |
+| `API_GATEWAY_REGION` / `AWS_REGION` | `us-east-1` | Región |
+| `BACKEND_HOST` | `http://184.192.252.196` | EC2 detrás del gateway |
+| `ENTRA_ISSUER` / `ENTRA_AUTHORITY` | tenant actual | Authorizer `tuki-jwt` |
+| `ENTRA_API_URI` | `api://tuki-tech-api` | Audience Entra |
+| `CORS_ORIGIN` | `https://pastito-247.github.io` | Origen Pages |
+
+Si no hay credenciales AWS, el script falla con
+`An error occurred (NoCredentials): Unable to locate credentials`. Configura
+`aws configure` o SSO antes de ejecutarlo.
+
+### Authorizers
+
+| Nombre | Tipo | Issuer | Audience |
+|---|---|---|---|
+| `tuki-jwt` | JWT | `https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0` | `api://tuki-tech-api` |
+| `tuki-cognito` | JWT | `COGNITO_ISSUER` | `COGNITO_CLIENT_ID` |
+
+### Rutas creadas por el script
+
+Para cada prefijo se crean cuatro rutas: `ANY <base>`, `ANY <base>/{proxy+}`,
+`OPTIONS <base>` y `OPTIONS <base>/{proxy+}`. Las `OPTIONS` quedan sin
+authorizer para que la preflight CORS no devuelva `401`.
+
+| Prefijo | Integración | Authorizer |
+|---|---|---|
+| `/api/public/products`, `/api/public/categories`, `/api/public/users`, `/api/public/orders` | servicios 8081/8082/8083/8084 | ninguno |
+| `/api/customer/orders` | orders 8084 | `tuki-cognito` |
+| `/api/products`, `/api/categories`, `/api/users`, `/api/orders` | 8081/8082/8083/8084 | `tuki-jwt` |
+| `/api/rabbit`, `/api/payments`, `/api/receipts` | 8085/8086 | `tuki-jwt` |
+| `/api/reports`, `/api/audit`, `/api/kafka` | 8087/8088/8089 | `tuki-jwt` |
+
+Las rutas con `{proxy+}` apuntan a integraciones cuyo target termina en
+`{proxy}`; las rutas peladas usan integraciones sin ese sufijo (ver la nota de
+integraciones `-bare` más arriba).
+
+### CORS y throttling
+
+- CORS: `http://localhost:4200` y `https://pastito-247.github.io`,
+  headers `authorization,content-type,x-requested-with`.
+- Stage `$default`: `50` rps / burst `100`.
+- Todas las rutas `ANY /api/public/**`: `20` rps / burst `40` mediante
+  `RouteSettings`.
+
+### Frontend
+
+En `.env` y en las Variables de GitHub Actions:
+
+```dotenv
+PROD_BACKEND_URL=https://3cbwduklgb.execute-api.us-east-1.amazonaws.com
+PROD_REDIRECT_URI=https://pastito-247.github.io/CLOUD-NATIVE-I
+COGNITO_REGION=us-east-1
+COGNITO_USER_POOL_ID=us-east-1_xxxxxxx
+COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
+COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxx
+```
+
+Luego:
+
+```powershell
+node scripts/generate-env.js
+npm run build --prefix frontend -- --configuration production --base-href /CLOUD-NATIVE-I/
+```
+
+### Verificación EFT
+
+```powershell
+$api = "https://3cbwduklgb.execute-api.us-east-1.amazonaws.com"
+
+curl -i "$api/api/public/products"
+curl -i "$api/api/public/categories"
+curl -i -X POST "$api/api/public/orders" -H "Content-Type: application/json" -d '{}'
+curl -i "$api/api/orders"
+curl -i -H "Authorization: Bearer $env:COGNITO_ACCESS_TOKEN" "$api/api/customer/orders"
+curl -i -H "Authorization: Bearer $env:COGNITO_ACCESS_TOKEN" "$api/api/rabbit/queues"
+```
+
+Resultados esperados: catálogo público `200`, guest con body inválido `400`,
+`/api/orders` sin token `401`, `/api/customer/orders` con token Cognito `200`,
+y `/api/rabbit/queues` con token Cognito `403` (el backend exige `ROLE_admin`).
+
 ## Notas y costo
 
 - **Costo**: HTTP API gratis hasta 1M requests/mes (free tier); después ~$1/M.
@@ -385,3 +485,28 @@ Pages. El access token es el mismo.
 | Response timeout | Integración HTTP lenta | Los servicios arrancan hasta 30-60s; espera a que `systemctl status` diga running |
 | Todo funciona local pero no en Pages | El CI usó `PROD_BACKEND_URL` vieja | Actualiza la **Variable de GitHub** y re-corre el workflow |
 | `invalid_token` en backend aunque API GW dejó pasar | La audience del backend (`audiences`) no coincide | Verifica `spring.security.oauth2.resourceserver.jwt.audiences=api://tuki-tech-api` en los 5 servicios |
+
+---
+
+## Despliegue EFT real (lab estudiante)
+
+- API: `3cbwduklgb`
+- Endpoint: `https://3cbwduklgb.execute-api.us-east-1.amazonaws.com`
+- EIP del EC2: `184.195.234.120`
+- Backend del gateway: `http://184.195.234.120` (nginx en puerto 80)
+- User Pool: `us-east-1_SzogHEuXI`
+- App Client: `a00kh0fv055nqc8mqqmge24p7`
+- Usuario demo: `cliente@tuki.cl` (password en `.env` local, variable `COGNITO_DEMO_PASSWORD`)
+- RDS: `tuki-postgres.cmvwnxo9nvlo.us-east-1.rds.amazonaws.com`
+
+El authorizer Cognito valida `aud`, por lo que el frontend envía el **ID token**
+(no el access token, que no incluye `aud`) en `/api/customer/*`.
+
+Verificación ejecutada:
+
+| Request | Resultado |
+|---|---|
+| `GET /api/public/products` | `200` |
+| `GET /api/public/categories` | `200` |
+| `GET /api/orders` sin token | `401` |
+| `GET /api/orders` con token inválido | `401` |

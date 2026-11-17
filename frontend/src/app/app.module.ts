@@ -7,10 +7,15 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
-import { RegisterComponent } from './register/register.component';
 import { AdminComponent } from './admin/admin.component';
 import { MyOrdersComponent } from './my-orders/my-orders.component';
 import { RabbitmqAdminComponent } from './rabbitmq-admin/rabbitmq-admin.component';
+import { KafkaAdminComponent } from './kafka-admin/kafka-admin.component';
+import { ReportsComponent } from './reports/reports.component';
+import { AuditComponent } from './audit/audit.component';
+import { PublicAuthComponent } from './public-auth/public-auth.component';
+import { GuestCheckoutComponent } from './guest-checkout/guest-checkout.component';
+import { TrackOrderComponent } from './track-order/track-order.component';
 
 import {
   MsalModule,
@@ -32,6 +37,7 @@ import type {
 } from '@azure/msal-angular';
 
 import { environment } from '../environments/environment';
+import { CognitoInterceptor } from './auth/cognito.interceptor';
 
 const msalInstance = new PublicClientApplication({
   auth: {
@@ -77,7 +83,10 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     [environment.usersUrl, environment.scopes],
     [environment.ordersUrl, environment.scopes],
     [environment.paymentsUrl, environment.scopes],
-    [environment.rabbitUrl, environment.scopes]
+    [environment.rabbitUrl, environment.scopes],
+    [environment.reportsUrl, environment.scopes],
+    [environment.auditUrl, environment.scopes],
+    [environment.kafkaAdminUrl, environment.scopes]
   ])
 };
 
@@ -86,10 +95,15 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     AppComponent,
     HomeComponent,
     LoginComponent,
-    RegisterComponent,
     AdminComponent,
     MyOrdersComponent,
-    RabbitmqAdminComponent
+    RabbitmqAdminComponent,
+    KafkaAdminComponent,
+    ReportsComponent,
+    AuditComponent,
+    PublicAuthComponent,
+    GuestCheckoutComponent,
+    TrackOrderComponent
   ],
 
   imports: [
@@ -115,6 +129,11 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     {
       provide: HTTP_INTERCEPTORS,
       useClass: MsalInterceptor,
+      multi: true
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: CognitoInterceptor,
       multi: true
     }
   ],

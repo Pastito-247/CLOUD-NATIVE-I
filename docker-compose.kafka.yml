@@ -1,0 +1,205 @@
+# =====================================================================
+# Arquitectura Kafka para la demo del EFT.
+#
+# Levanta 3 nodos Zookeeper, 3 brokers, Kafka UI y un contenedor one-shot
+# que crea los topicos del dominio (3 particiones, RF 3) y sus DLT.
+#
+#   docker compose -f docker-compose.kafka.yml up -d
+#   docker compose -f docker-compose.kafka.yml ps
+#
+# Kafka UI: http://localhost:8080
+# Brokers:  localhost:9092, localhost:9093, localhost:9094
+#
+# Requiere Docker Desktop con ~6 GB de RAM.
+# =====================================================================
+services:
+  zookeeper1:
+    image: bitnami/zookeeper:3.9
+    container_name: zookeeper1
+    hostname: zookeeper1
+    environment:
+      ZOO_SERVER_ID: 1
+      ZOO_SERVERS: >-
+        server.1=zookeeper1:2888:3888;2181
+        server.2=zookeeper2:2888:3888;2181
+        server.3=zookeeper3:2888:3888;2181
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    volumes:
+      - zookeeper1-data:/bitnami/zookeeper
+    networks:
+      - tuki-kafka
+
+  zookeeper2:
+    image: bitnami/zookeeper:3.9
+    container_name: zookeeper2
+    hostname: zookeeper2
+    environment:
+      ZOO_SERVER_ID: 2
+      ZOO_SERVERS: >-
+        server.1=zookeeper1:2888:3888;2181
+        server.2=zookeeper2:2888:3888;2181
+        server.3=zookeeper3:2888:3888;2181
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    volumes:
+      - zookeeper2-data:/bitnami/zookeeper
+    networks:
+      - tuki-kafka
+
+  zookeeper3:
+    image: bitnami/zookeeper:3.9
+    container_name: zookeeper3
+    hostname: zookeeper3
+    environment:
+      ZOO_SERVER_ID: 3
+      ZOO_SERVERS: >-
+        server.1=zookeeper1:2888:3888;2181
+        server.2=zookeeper2:2888:3888;2181
+        server.3=zookeeper3:2888:3888;2181
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    volumes:
+      - zookeeper3-data:/bitnami/zookeeper
+    networks:
+      - tuki-kafka
+
+  kafka1:
+    image: bitnami/kafka:3.7
+    container_name: kafka1
+    hostname: kafka1
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: >-
+        zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_CFG_BROKER_ID: 1
+      KAFKA_CFG_LISTENERS: >-
+        PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: >-
+        PLAINTEXT://localhost:9092,INTERNAL://kafka1:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: >-
+        CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_CFG_MIN_INSYNC_REPLICAS: 2
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka1-data:/bitnami/kafka
+    networks:
+      - tuki-kafka
+
+  kafka2:
+    image: bitnami/kafka:3.7
+    container_name: kafka2
+    hostname: kafka2
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: >-
+        zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_CFG_BROKER_ID: 2
+      KAFKA_CFG_LISTENERS: >-
+        PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: >-
+        PLAINTEXT://localhost:9093,INTERNAL://kafka2:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: >-
+        CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_CFG_MIN_INSYNC_REPLICAS: 2
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9093:9092"
+    volumes:
+      - kafka2-data:/bitnami/kafka
+    networks:
+      - tuki-kafka
+
+  kafka3:
+    image: bitnami/kafka:3.7
+    container_name: kafka3
+    hostname: kafka3
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: >-
+        zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_CFG_BROKER_ID: 3
+      KAFKA_CFG_LISTENERS: >-
+        PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: >-
+        PLAINTEXT://localhost:9094,INTERNAL://kafka3:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: >-
+        CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_CFG_MIN_INSYNC_REPLICAS: 2
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9094:9092"
+    volumes:
+      - kafka3-data:/bitnami/kafka
+    networks:
+      - tuki-kafka
+
+  kafka-init:
+    image: bitnami/kafka:3.7
+    container_name: kafka-init
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    entrypoint: ["/bin/bash", "/opt/kafka-init.sh"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9094,kafka2:9094,kafka3:9094
+    volumes:
+      - ./docker/kafka/kafka-init.sh:/opt/kafka-init.sh:ro
+    networks:
+      - tuki-kafka
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    environment:
+      KAFKA_CLUSTERS_0_NAME: tuki-kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9094,kafka2:9094,kafka3:9094
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      DYNAMIC_CONFIG_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    networks:
+      - tuki-kafka
+
+networks:
+  tuki-kafka:
+    name: tuki-kafka
+
+volumes:
+  zookeeper1-data:
+  zookeeper2-data:
+  zookeeper3-data:
+  kafka1-data:
+  kafka2-data:
+  kafka3-data:

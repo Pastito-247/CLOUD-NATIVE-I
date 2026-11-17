@@ -1,0 +1,417 @@
+x-app-env: &app-env
+  SPRING_PROFILES_ACTIVE: prod
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_USER: tuki
+  DB_PASSWORD: tuki
+  RABBITMQ_HOST: rabbitmq1
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_USERNAME: tuki
+  RABBITMQ_PASSWORD: tuki
+  RABBITMQ_VHOST: /
+  RABBITMQ_SSL: "false"
+  RABBITMQ_MANAGEMENT_URL: http://rabbitmq1:15672
+  KAFKA_BOOTSTRAP_SERVERS: kafka1:9094,kafka2:9094,kafka3:9094
+  COGNITO_ISSUER: ${COGNITO_ISSUER:-}
+  COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-}
+  CORS_ALLOWED_ORIGINS: http://localhost:4200,https://pastito-247.github.io
+  PRODUCTS_SERVICE_URL: http://products-service:8081
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tuki-postgres
+    environment:
+      POSTGRES_USER: tuki
+      POSTGRES_PASSWORD: tuki
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tuki -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - tuki-net
+
+  rabbitmq1:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq1
+    hostname: rabbitmq1
+    environment:
+      RABBITMQ_ERLANG_COOKIE: tuki-cluster-cookie
+      RABBITMQ_DEFAULT_USER: tuki
+      RABBITMQ_DEFAULT_PASS: tuki
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq1-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - tuki-net
+
+  rabbitmq2:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq2
+    hostname: rabbitmq2
+    environment:
+      RABBITMQ_ERLANG_COOKIE: tuki-cluster-cookie
+      RABBITMQ_DEFAULT_USER: tuki
+      RABBITMQ_DEFAULT_PASS: tuki
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq2-data:/var/lib/rabbitmq
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+    networks:
+      - tuki-net
+
+  zookeeper1:
+    image: bitnami/zookeeper:3.9
+    container_name: zookeeper1
+    hostname: zookeeper1
+    environment:
+      ZOO_SERVER_ID: 1
+      ZOO_SERVERS: >-
+        server.1=zookeeper1:2888:3888;2181
+        server.2=zookeeper2:2888:3888;2181
+        server.3=zookeeper3:2888:3888;2181
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    volumes:
+      - zookeeper1-data:/bitnami/zookeeper
+    networks:
+      - tuki-net
+
+  zookeeper2:
+    image: bitnami/zookeeper:3.9
+    container_name: zookeeper2
+    hostname: zookeeper2
+    environment:
+      ZOO_SERVER_ID: 2
+      ZOO_SERVERS: >-
+        server.1=zookeeper1:2888:3888;2181
+        server.2=zookeeper2:2888:3888;2181
+        server.3=zookeeper3:2888:3888;2181
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    volumes:
+      - zookeeper2-data:/bitnami/zookeeper
+    networks:
+      - tuki-net
+
+  zookeeper3:
+    image: bitnami/zookeeper:3.9
+    container_name: zookeeper3
+    hostname: zookeeper3
+    environment:
+      ZOO_SERVER_ID: 3
+      ZOO_SERVERS: >-
+        server.1=zookeeper1:2888:3888;2181
+        server.2=zookeeper2:2888:3888;2181
+        server.3=zookeeper3:2888:3888;2181
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    volumes:
+      - zookeeper3-data:/bitnami/zookeeper
+    networks:
+      - tuki-net
+
+  kafka1:
+    image: bitnami/kafka:3.7
+    container_name: kafka1
+    hostname: kafka1
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_CFG_BROKER_ID: 1
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka1:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_CFG_MIN_INSYNC_REPLICAS: 2
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka1-data:/bitnami/kafka
+    networks:
+      - tuki-net
+
+  kafka2:
+    image: bitnami/kafka:3.7
+    container_name: kafka2
+    hostname: kafka2
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_CFG_BROKER_ID: 2
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093,INTERNAL://kafka2:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_CFG_MIN_INSYNC_REPLICAS: 2
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9093:9092"
+    volumes:
+      - kafka2-data:/bitnami/kafka
+    networks:
+      - tuki-net
+
+  kafka3:
+    image: bitnami/kafka:3.7
+    container_name: kafka3
+    hostname: kafka3
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_CFG_BROKER_ID: 3
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9094,INTERNAL://kafka3:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_CFG_MIN_INSYNC_REPLICAS: 2
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9094:9092"
+    volumes:
+      - kafka3-data:/bitnami/kafka
+    networks:
+      - tuki-net
+
+  kafka-init:
+    image: bitnami/kafka:3.7
+    container_name: kafka-init
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    entrypoint: ["/bin/bash", "/opt/kafka-init.sh"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9094,kafka2:9094,kafka3:9094
+    volumes:
+      - ./docker/kafka/kafka-init.sh:/opt/kafka-init.sh:ro
+    networks:
+      - tuki-net
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    environment:
+      KAFKA_CLUSTERS_0_NAME: tuki-kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9094,kafka2:9094,kafka3:9094
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      DYNAMIC_CONFIG_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    networks:
+      - tuki-net
+
+  products-service:
+    build: ./backend/products-service
+    container_name: products-service
+    environment:
+      <<: *app-env
+      DB_NAME: tuki_products
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq1:
+        condition: service_healthy
+      kafka1:
+        condition: service_started
+    networks:
+      - tuki-net
+
+  categories-service:
+    build: ./backend/categories-service
+    container_name: categories-service
+    environment:
+      <<: *app-env
+      DB_NAME: tuki_categories
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq1:
+        condition: service_healthy
+      kafka1:
+        condition: service_started
+    networks:
+      - tuki-net
+
+  users-service:
+    build: ./backend/users-service
+    container_name: users-service
+    environment:
+      <<: *app-env
+      DB_NAME: tuki_users
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq1:
+        condition: service_healthy
+      kafka1:
+        condition: service_started
+    networks:
+      - tuki-net
+
+  orders-service:
+    build: ./backend/orders-service
+    container_name: orders-service
+    environment:
+      <<: *app-env
+      DB_NAME: tuki_orders
+    ports:
+      - "8084:8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq1:
+        condition: service_healthy
+      kafka1:
+        condition: service_started
+    networks:
+      - tuki-net
+
+  rabbitmq-admin-service:
+    build: ./backend/rabbitmq-admin-service
+    container_name: rabbitmq-admin-service
+    environment:
+      <<: *app-env
+    ports:
+      - "8085:8085"
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+    networks:
+      - tuki-net
+
+  payments-service:
+    build: ./backend/payments-service
+    container_name: payments-service
+    environment:
+      <<: *app-env
+      DB_NAME: tuki_payments
+    ports:
+      - "8086:8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq1:
+        condition: service_healthy
+      kafka1:
+        condition: service_started
+    networks:
+      - tuki-net
+
+  report-service:
+    build: ./backend/report-service
+    container_name: report-service
+    environment:
+      <<: *app-env
+    ports:
+      - "8087:8087"
+    depends_on:
+      kafka1:
+        condition: service_started
+      kafka2:
+        condition: service_started
+      kafka3:
+        condition: service_started
+    networks:
+      - tuki-net
+
+  audit-service:
+    build: ./backend/audit-service
+    container_name: audit-service
+    environment:
+      <<: *app-env
+    ports:
+      - "8088:8088"
+    depends_on:
+      kafka1:
+        condition: service_started
+      kafka2:
+        condition: service_started
+      kafka3:
+        condition: service_started
+    networks:
+      - tuki-net
+
+  kafka-admin-service:
+    build: ./backend/kafka-admin-service
+    container_name: kafka-admin-service
+    environment:
+      <<: *app-env
+    ports:
+      - "8089:8089"
+    depends_on:
+      kafka1:
+        condition: service_started
+      kafka2:
+        condition: service_started
+      kafka3:
+        condition: service_started
+    networks:
+      - tuki-net
+
+networks:
+  tuki-net:
+    name: tuki-net
+
+volumes:
+  postgres-data:
+  rabbitmq1-data:
+  rabbitmq2-data:
+  zookeeper1-data:
+  zookeeper2-data:
+  zookeeper3-data:
+  kafka1-data:
+  kafka2-data:
+  kafka3-data:

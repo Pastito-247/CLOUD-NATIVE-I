@@ -1,0 +1,20 @@
+<div class="track-container">
+  <h1>Seguir pedido</h1>
+  <p class="subtitle">Consulta el estado con tu código de seguimiento, sin iniciar sesión.</p>
+
+  <div class="search-row">
+    <input [(ngModel)]="code" placeholder="TUKI-XXXXXXXX" />
+    <button class="btn-primary" (click)="search()">Buscar</button>
+  </div>
+
+  <p *ngIf="error" class="error">{{ error }}</p>
+  <p *ngIf="loading">Buscando…</p>
+
+  <div *ngIf="result" class="result">
+    <h2>{{ result.trackingCode }}</h2>
+    <p><strong>Estado:</strong> {{ result.status }}</p>
+    <p><strong>Total:</strong> ${{ result.total }}</p>
+    <p><strong>Ítems:</strong> {{ result.itemCount }}</p>
+    <p><strong>Creado:</strong> {{ result.createdAt }}</p>
+  </div>
+</div>

@@ -26,13 +26,16 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final PaymentEventPublisher publisher;
+    private final com.ecommerce.payments.messaging.kafka.PaymentEventPublisher kafkaPublisher;
     private final ObjectMapper objectMapper;
 
     public PaymentService(PaymentRepository paymentRepository,
                           PaymentEventPublisher publisher,
+                          com.ecommerce.payments.messaging.kafka.PaymentEventPublisher kafkaPublisher,
                           ObjectMapper objectMapper) {
         this.paymentRepository = paymentRepository;
         this.publisher = publisher;
+        this.kafkaPublisher = kafkaPublisher;
         this.objectMapper = objectMapper;
     }
 
@@ -62,6 +65,10 @@ public class PaymentService {
                 saved.getShippingAddress(),
                 items));
 
+        kafkaPublisher.publishPaymentEvent(
+                saved.getId(), saved.getOrderId(), saved.getUserEmail(),
+                saved.getAmount(), saved.getStatus(), "PAYMENT_REQUESTED");
+
         log.info("Pago {} registrado en estado {} para {}", saved.getId(), saved.getStatus(), saved.getUserEmail());
         return saved;
     }
@@ -70,14 +77,22 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalStateException("Pago no encontrado: " + paymentId));
         payment.setStatus(Payment.STATUS_COMPLETED);
-        return paymentRepository.save(payment);
+        Payment saved = paymentRepository.save(payment);
+        kafkaPublisher.publishPaymentEvent(
+                saved.getId(), saved.getOrderId(), saved.getUserEmail(),
+                saved.getAmount(), saved.getStatus(), "PAYMENT_APPROVED");
+        return saved;
     }
 
     public Payment markFailed(Long paymentId) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalStateException("Pago no encontrado: " + paymentId));
         payment.setStatus(Payment.STATUS_FAILED);
-        return paymentRepository.save(payment);
+        Payment saved = paymentRepository.save(payment);
+        kafkaPublisher.publishPaymentEvent(
+                saved.getId(), saved.getOrderId(), saved.getUserEmail(),
+                saved.getAmount(), saved.getStatus(), "PAYMENT_REJECTED");
+        return saved;
     }
 
     public List<Payment> getAllPayments() {

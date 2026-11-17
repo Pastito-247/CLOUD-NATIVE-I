@@ -1,0 +1,49 @@
+<div class="auth-container">
+  <h1>Acceso de clientes</h1>
+
+  <p *ngIf="!publicAuth.isConfigured()" class="error">
+    La autenticación pública no está configurada. Completa COGNITO_USER_POOL_ID y
+    COGNITO_CLIENT_ID en .env y ejecuta npm run generate-env.
+  </p>
+
+  <p *ngIf="message" class="message">{{ message }}</p>
+  <p *ngIf="error" class="error">{{ error }}</p>
+
+  <form *ngIf="mode === 'login'" (ngSubmit)="submitLogin()">
+    <h2>Iniciar sesión</h2>
+    <label>Correo <input type="email" [(ngModel)]="email" name="email" required /></label>
+    <label>Contraseña <input type="password" [(ngModel)]="password" name="password" required /></label>
+    <button class="btn-primary" [disabled]="loading">Entrar</button>
+    <button type="button" class="btn-secondary" (click)="mode='register'">Crear cuenta</button>
+    <button type="button" class="btn-secondary" (click)="mode='forgot'">Olvidé mi contraseña</button>
+  </form>
+
+  <form *ngIf="mode === 'register'" (ngSubmit)="submitRegister()">
+    <h2>Crear cuenta</h2>
+    <label>Nombre <input [(ngModel)]="name" name="name" required /></label>
+    <label>Correo <input type="email" [(ngModel)]="email" name="email" required /></label>
+    <label>Contraseña <input type="password" [(ngModel)]="password" name="password" required minlength="8" /></label>
+    <button class="btn-primary" [disabled]="loading">Registrarme</button>
+    <button type="button" class="btn-secondary" (click)="mode='login'">Volver</button>
+  </form>
+
+  <form *ngIf="mode === 'confirm'" (ngSubmit)="submitConfirm()">
+    <h2>Confirmar cuenta</h2>
+    <label>Código <input [(ngModel)]="code" name="code" required /></label>
+    <button class="btn-primary" [disabled]="loading">Confirmar</button>
+  </form>
+
+  <form *ngIf="mode === 'forgot'" (ngSubmit)="submitForgot()">
+    <h2>Recuperar contraseña</h2>
+    <label>Correo <input type="email" [(ngModel)]="email" name="email" required /></label>
+    <button class="btn-primary" [disabled]="loading">Enviar código</button>
+    <button type="button" class="btn-secondary" (click)="mode='login'">Volver</button>
+  </form>
+
+  <form *ngIf="mode === 'forgot-confirm'" (ngSubmit)="submitForgotConfirm()">
+    <h2>Nueva contraseña</h2>
+    <label>Código <input [(ngModel)]="code" name="code" required /></label>
+    <label>Nueva contraseña <input type="password" [(ngModel)]="newPassword" name="newPassword" required minlength="8" /></label>
+    <button class="btn-primary" [disabled]="loading">Cambiar</button>
+  </form>
+</div>

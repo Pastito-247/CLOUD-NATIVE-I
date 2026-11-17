@@ -532,10 +532,10 @@ sudo systemctl stop tuki-products tuki-categories tuki-users tuki-orders tuki-ra
 
 ## Auto-seed de datos demo
 
-`products-service` y `categories-service` se **siembran solos** al arrancar si la
-base (H2 in-memory `create-drop`) está vacía: crean 6 categorías y 19 productos de
-ejemplo. No necesitas correr `scripts/seed-data.js` ni tener un token admin para
-que el Home muestre el catálogo.
+`products-service`, `categories-service` y `users-service` se **siembran solos**
+al arrancar si la base está vacía: crean 6 categorías, 19 productos y 3 usuarios
+demo (`admin@tuki.cl`, `staff@tuki.cl`, `cliente@tuki.cl`). No necesitas correr
+`scripts/seed-data.js` ni tener un token admin para que el Home muestre el catálogo.
 
 > `scripts/seed-data.js` sigue disponible como alternativa manual.
 
@@ -563,11 +563,90 @@ Asumiendo que los JARs ya se subieron (`~/apps/`):
 
 ---
 
+## Fase 7 — RDS PostgreSQL y perfil `prod`
+
+Los 5 servicios JPA (`products`, `categories`, `users`, `orders`, `payments`) usan H2
+en memoria por defecto y PostgreSQL cuando arrancan con `SPRING_PROFILES_ACTIVE=prod`.
+Cada servicio apunta a su propia base: `tuki_products`, `tuki_categories`,
+`tuki_users`, `tuki_orders`, `tuki_payments`.
+
+### 1. Crear/verificar RDS (desde tu PC)
+
+```bash
+export DB_PASSWORD='TU_PASSWORD_MAESTRO'
+bash scripts/aws/rds-setup.sh
+```
+
+El script imprime `DB_HOST` (endpoint sin puerto), crea la instancia `tuki-postgres`
+si no existe, espera a que esté disponible y crea las 7 bases. Si no tienes `psql`
+instalado, crea las bases manualmente con el endpoint impreso.
+
+### 2. Activar el perfil `prod` en el EC2
+
+Para cada uno de los 5 servicios JPA, crea un drop-in de systemd:
+
+```bash
+sudo systemctl edit tuki-products
+```
+
+```ini
+[Service]
+Environment=SPRING_PROFILES_ACTIVE=prod
+Environment=DB_HOST=ENDPOINT_IMPRESO_POR_EL_SCRIPT
+Environment=DB_PORT=5432
+Environment=DB_NAME=tuki_products
+Environment=DB_USER=tuki
+Environment=DB_PASSWORD=TU_PASSWORD_MAESTRO
+```
+
+Repite con `tuki-categories`, `tuki-users`, `tuki-orders` y `tuki-payments`,
+cambiando solo `DB_NAME` por `tuki_categories`, `tuki_users`, `tuki_orders` y
+`tuki_payments` respectivamente. Luego:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart tuki-products tuki-categories tuki-users tuki-orders tuki-payments
+```
+
+### 3. Stack local completo con Docker
+
+```bash
+docker compose -f docker-compose.full.yml up -d --build
+docker compose -f docker-compose.full.yml ps
+```
+
+Levanta PostgreSQL, RabbitMQ (2 nodos), Kafka (3 ZK + 3 brokers + UI + init) y los
+9 microservicios. UI: Kafka `http://localhost:8080`, RabbitMQ
+`http://localhost:15672` (`tuki` / `tuki`).
+
+### 4. Reverse proxy para API Gateway
+
+El API Gateway se configura con `BACKEND_HOST=http://184.195.234.120`, es decir
+puerto 80. En el EC2 corre nginx en ese puerto y redirige por prefijo:
+
+- `/api/public/products` → `127.0.0.1:8081`
+- `/api/public/categories` → `127.0.0.1:8082`
+- `/api/public/users` → `127.0.0.1:8083`
+- `/api/public/orders` y `/api/customer/orders` → `127.0.0.1:8084`
+- `/api/rabbit` → `127.0.0.1:8085`
+- `/api/payments` y `/api/receipts` → `127.0.0.1:8086`
+- `/api/reports` → `127.0.0.1:8087`
+- `/api/audit` → `127.0.0.1:8088`
+- `/api/kafka` → `127.0.0.1:8089`
+
+Verificación:
+
+```bash
+curl http://127.0.0.1/api/public/products
+```
+
+---
+
 ## Notas importantes
 
-- **Datos en memoria**: todos los servicios usan **H2 in-memory** con `create-drop`.
-  Al reiniciar la instancia o el servicio, los datos se pierden. Para persistir en
-  producción deberías migrar a RDS MySQL (ver README) o cambiar el properties.
+- **Persistencia**: en local se usa H2 in-memory con `create-drop`; con el perfil
+  `prod` se usa PostgreSQL/RDS con `ddl-auto: update` y el driver
+  `org.postgresql.Driver`. Los datos ya no se pierden al reiniciar.
 
 - **users-service**: ya quedó arreglado en el repo (`server.port=8083`, issuer y
   audience en `application.yml`). La Fase 5 fuerza además el puerto y la

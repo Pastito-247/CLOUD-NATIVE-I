@@ -38,7 +38,7 @@ Proyecto del ramo DESARROLLO CLOUD NATIVE I
   - Rutas privadas: `/api/products/**`, `/api/categories/**`, `/api/users/**`, `/api/orders/**`, `/api/rabbit/**`, `/api/payments/**`, `/api/receipts/**` (validación JWT)
   - Validación JWT con Azure AD issuer
 - **EC2**: Instancias para cada microservicio
-- **RDS**: Base de datos MySQL cloud
+- **RDS**: Base de datos PostgreSQL cloud (una base por microservicio JPA)
 
 ### IDaaS (Azure EntraID)
 - **Roles**: admin, customer, staff

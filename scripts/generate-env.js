@@ -70,6 +70,11 @@ export const environment = {
   rabbitUrl: '${devBackend || 'http://localhost:8085'}/api/rabbit',
   productsPublicUrl: '${devBackend || 'http://localhost:8081'}/api/public/products',
   categoriesPublicUrl: '${devBackend || 'http://localhost:8082'}/api/public/categories',
+  reportsUrl: '${devBackend || 'http://localhost:8087'}/api/reports',
+  auditUrl: '${devBackend || 'http://localhost:8088'}/api/audit',
+  kafkaAdminUrl: '${devBackend || 'http://localhost:8089'}/api/kafka',
+  publicOrdersUrl: '${devBackend || 'http://localhost:8084'}/api/public/orders',
+  customerOrdersUrl: '${devBackend || 'http://localhost:8084'}/api/customer/orders',
 
   enableAuth: true,
 
@@ -77,6 +82,12 @@ export const environment = {
   apiUri: '${env.ENTRA_API_URI}',
   apiScope: '${env.ENTRA_API_SCOPE}',
   scopes: ['${env.ENTRA_API_SCOPE}'],
+
+  cognito: {
+    region: '${env.COGNITO_REGION || 'us-east-1'}',
+    userPoolId: '${env.COGNITO_USER_POOL_ID || ''}',
+    clientId: '${env.COGNITO_CLIENT_ID || ''}'
+  },
 
   msalConfig: {
     auth: {
@@ -121,6 +132,11 @@ export const environment = {
   rabbitUrl: '${prodBackend}/api/rabbit',
   productsPublicUrl: '${prodBackend}/api/public/products',
   categoriesPublicUrl: '${prodBackend}/api/public/categories',
+  reportsUrl: '${prodBackend}/api/reports',
+  auditUrl: '${prodBackend}/api/audit',
+  kafkaAdminUrl: '${prodBackend}/api/kafka',
+  publicOrdersUrl: '${prodBackend}/api/public/orders',
+  customerOrdersUrl: '${prodBackend}/api/customer/orders',
 
   enableAuth: true,
 
@@ -128,6 +144,12 @@ export const environment = {
   apiUri: '${env.ENTRA_API_URI}',
   apiScope: '${env.ENTRA_API_SCOPE}',
   scopes: ['${env.ENTRA_API_SCOPE}'],
+
+  cognito: {
+    region: '${env.COGNITO_REGION || 'us-east-1'}',
+    userPoolId: '${env.COGNITO_USER_POOL_ID || ''}',
+    clientId: '${env.COGNITO_CLIENT_ID || ''}'
+  },
 
   msalConfig: {
     auth: {

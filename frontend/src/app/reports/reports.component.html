@@ -1,0 +1,15 @@
+<div class="admin-container">
+  <h1>Reportes en tiempo real</h1>
+  <p class="subtitle">KPIs calculados a partir de los eventos Kafka.</p>
+  <p *ngIf="error" class="error">{{ error }}</p>
+  <div *ngIf="summary" class="kpi-grid">
+    <div class="kpi"><span>Pedidos totales</span><strong>{{ summary.totalOrders }}</strong></div>
+    <div class="kpi"><span>Confirmados</span><strong>{{ summary.confirmedOrders }}</strong></div>
+    <div class="kpi"><span>Guest</span><strong>{{ summary.guestOrders }}</strong></div>
+    <div class="kpi"><span>Autenticados</span><strong>{{ summary.authenticatedOrders }}</strong></div>
+    <div class="kpi"><span>Pagos aprobados</span><strong>{{ summary.paymentsApproved }}</strong></div>
+    <div class="kpi"><span>Pagos rechazados</span><strong>{{ summary.paymentsRejected }}</strong></div>
+    <div class="kpi"><span>Ingresos</span><strong>{{ summary.revenue }}</strong></div>
+    <div class="kpi"><span>Ticket promedio</span><strong>{{ summary.averageTicket }}</strong></div>
+  </div>
+</div>
