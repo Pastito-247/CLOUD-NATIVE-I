@@ -8,7 +8,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.util.List;
+import java.util.Locale;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -50,9 +52,18 @@ public class DataSeeder implements CommandLineRunner {
         for (int i = 0; i < products.size(); i++) {
             Product product = products.get(i);
             product.setStockQuantity(stock[i]);
-            product.setImageUrl("https://picsum.photos/seed/tuki-" + (i + 1) + "/400/300");
+            product.setImageUrl(imageUrlFor(product.getName()));
         }
 
         productRepository.saveAll(products);
+    }
+
+    private String imageUrlFor(String name) {
+        String seed = Normalizer.normalize(name, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-+|-+$)", "");
+        return "https://picsum.photos/seed/" + seed + "/400/300";
     }
 }

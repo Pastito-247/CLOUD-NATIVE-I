@@ -239,6 +239,47 @@ docker exec rabbitmq1 rabbitmqctl cluster_status   # 2 nodos
   (`docker/rabbitmq/rabbitmq.conf`).
 - Credenciales locales `tuki / tuki` (ajústalas en `.env`).
 
+### RabbitMQ en el EC2 (Docker, 1 nodo, solo local)
+
+En producción el broker corre en la **misma instancia EC2** que el backend y
+este se conecta por loopback (`127.0.0.1:5672`). No requiere abrir `5672` ni
+`15672` en el Security Group ni tunel SSH inverso.
+
+- Compose: `docker-compose.ec2.yml` (1 nodo, `restart: unless-stopped`,
+  volumen `rabbitmq-data`, puertos publicados solo en `127.0.0.1`).
+- Deploy automático desde tu PC:
+
+  ```powershell
+  .\scripts\deploy-rabbitmq-ec2.ps1 -Ec2Host IP_EC2 -ApplyBackendConfig
+  ```
+
+  `-ApplyBackendConfig` escribe los drop-ins de systemd
+  (`/etc/systemd/system/tuki-*.service.d/override-rabbitmq.conf`) y reinicia
+  los 6 servicios para que apunten a `127.0.0.1:5672` (`tuki / tuki`, vhost `/`).
+
+- Manual dentro del EC2:
+
+  ```bash
+  mkdir -p ~/rabbitmq && cd ~/rabbitmq
+  # copiar docker-compose.ec2.yml como docker-compose.yml
+  docker compose up -d
+  docker compose ps
+  ```
+
+- Management UI desde tu PC. Opción directa (sin túnel): abrir en el Security
+  Group el puerto `15672` solo para tu IP y entrar a `http://IP_EC2:15672`
+  (`tuki / tuki`). Opción segura sin abrir puertos: túnel SSH de *forward*:
+
+  ```powershell
+  ssh -i .\tuki-key.pem -L 15672:127.0.0.1:15672 ubuntu@IP_EC2
+  # http://localhost:15672  ->  tuki / tuki
+  ```
+
+> Si el volumen ya existe, cambiar `RABBITMQ_DEFAULT_USER/PASS` no tiene efecto.
+> Para reinicializar (borra colas y mensajes): `docker compose down -v && docker compose up -d`.
+> El contenedor arranca solo tras un reboot si Docker está habilitado
+> (`sudo systemctl enable docker`).
+
 ## 6. Variables propias del flujo de pago
 
 | Variable | Default | Descripción |
@@ -268,4 +309,7 @@ forma asincrona. El checkout del carrito crea el pedido
   `/api/receipts/{proxy+}` → `http://<host>:8086` con el **JWT authorizer**.
 - En el EC2 exporta las variables `RABBITMQ_*` para que `payments-service`,
   `orders-service`, `users-service`, `products-service` y
-  `rabbitmq-admin-service` se conecten a CloudAMQP.
+  `rabbitmq-admin-service` se conecten al broker. Si RabbitMQ corre en el mismo
+  EC2 (recomendado), los valores son `RABBITMQ_HOST=127.0.0.1`,
+  `RABBITMQ_PORT=5672`, `RABBITMQ_SSL=false`, `RABBITMQ_VHOST=/` y las
+  credenciales del contenedor (`tuki / tuki` por defecto).

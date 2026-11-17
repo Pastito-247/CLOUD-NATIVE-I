@@ -9,5 +9,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     List<Payment> findByUserEmail(String userEmail);
 
+    List<Payment> findByUserEmailIgnoreCase(String userEmail);
+
     List<Payment> findByStatus(String status);
 }

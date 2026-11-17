@@ -15,26 +15,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Configuracion de RabbitMQ del dominio de pagos.
- *
- * Declara, mediante beans, los dos exchanges fanout del flujo de pago, sus
- * colas, bindings y el dead-letter (DLX/DLQ) de cada caso de uso. Toda la
- * infraestructura de mensajeria queda aislada aqui; los servicios de dominio
- * no conocen detalles de RabbitMQ.
- *
- * Topologia:
- *   payment.exchange (fanout)                                   [fase de pago]
- *     --o payment.notification.queue   -> aviso "pago en proceso"
- *     --o payment.screen.queue         -> simula el pago y genera la boleta PDF
- *   payment.dlx (direct) -> payment.notification.dlq / payment.screen.dlq
- *
- *   receipt.exchange (fanout)                                   [fase post-pago]
- *     --o receipt.email.queue          -> correo de confirmacion + boleta
- *     --o order.review.queue           -> pedido para revision staff/admin
- *     --o stock.decrement.queue        -> descuento de stock
- *   receipt.dlx (direct) -> receipt.email.dlq / order.review.dlq / stock.decrement.dlq
- */
+
 @Configuration
 @EnableConfigurationProperties(MessagingProperties.class)
 public class RabbitMQConfig {
@@ -45,9 +26,7 @@ public class RabbitMQConfig {
         this.props = props;
     }
 
-    // ------------------------------------------------------------------
     // Exchanges
-    // ------------------------------------------------------------------
 
     @Bean
     public FanoutExchange paymentExchange() {

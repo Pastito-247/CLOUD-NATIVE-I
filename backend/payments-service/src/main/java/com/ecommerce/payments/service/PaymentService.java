@@ -85,7 +85,7 @@ public class PaymentService {
     }
 
     public List<Payment> getPaymentsByUser(String userEmail) {
-        return paymentRepository.findByUserEmail(userEmail);
+        return paymentRepository.findByUserEmailIgnoreCase(userEmail);
     }
 
     public Payment getPayment(Long id) {
