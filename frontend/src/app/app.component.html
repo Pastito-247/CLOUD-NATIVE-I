@@ -52,6 +52,30 @@
       </a>
 
       <a
+        *ngIf="isLoggedIn && isAdmin"
+        routerLink="/admin/kafka"
+        routerLinkActive="active"
+        (click)="menuOpen = false">
+        Kafka
+      </a>
+
+      <a
+        *ngIf="isLoggedIn && isAdmin"
+        routerLink="/admin/reports"
+        routerLinkActive="active"
+        (click)="menuOpen = false">
+        Reportes
+      </a>
+
+      <a
+        *ngIf="isLoggedIn && isAdmin"
+        routerLink="/admin/audit"
+        routerLinkActive="active"
+        (click)="menuOpen = false">
+        Auditoría
+      </a>
+
+      <a
         *ngIf="isLoggedIn"
         routerLink="/my-orders"
         routerLinkActive="active"

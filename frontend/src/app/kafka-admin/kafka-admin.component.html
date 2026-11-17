@@ -1,0 +1,65 @@
+<div class="admin-container">
+  <h1>Administración Kafka</h1>
+  <p class="subtitle">Tópicos, configuraciones y consumer groups del clúster.</p>
+
+  <p *ngIf="error" class="error">{{ error }}</p>
+
+  <section>
+    <h2>Crear tópico</h2>
+    <div class="form-row">
+      <label>Nombre <input [(ngModel)]="newTopic.name" placeholder="mi.topico" /></label>
+      <label>Particiones <input type="number" [(ngModel)]="newTopic.partitions" min="1" /></label>
+      <label>Réplicas <input type="number" [(ngModel)]="newTopic.replicationFactor" min="1" /></label>
+      <label>Retención (ms) <input type="number" [(ngModel)]="newTopic.retentionMs" /></label>
+      <button class="btn-primary" (click)="createTopic()">Crear</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tópicos</h2>
+    <p *ngIf="loading">Cargando…</p>
+    <table *ngIf="!loading">
+      <thead>
+        <tr><th>Nombre</th><th>Particiones</th><th>Réplicas</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let t of topics">
+          <td>{{ t.name }}</td>
+          <td>{{ t.partitions }}</td>
+          <td>{{ t.replicationFactor }}</td>
+          <td>
+            <button class="btn-secondary" (click)="viewConfig(t.name)">Config</button>
+            <button class="btn-danger" (click)="deleteTopic(t.name)">Eliminar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section *ngIf="configTopic">
+    <h2>Configuración de {{ configTopic }}</h2>
+    <div class="form-row">
+      <label>Clave <input [(ngModel)]="configKey" /></label>
+      <label>Valor <input [(ngModel)]="configValue" /></label>
+      <button class="btn-primary" (click)="updateConfig()">Modificar</button>
+    </div>
+    <pre *ngIf="configResult">{{ configResult.configs | json }}</pre>
+  </section>
+
+  <section>
+    <h2>Consumer groups</h2>
+    <table>
+      <thead><tr><th>Grupo</th><th>Estado</th><th>Miembros</th><th>Tópicos</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let g of groups">
+          <td>{{ g.groupId }}</td>
+          <td>{{ g.state }}</td>
+          <td>{{ g.members }}</td>
+          <td>{{ g.assignedTopics?.join(', ') }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p><a href="http://localhost:8080" target="_blank" rel="noopener">Abrir Kafka UI</a></p>
+</div>

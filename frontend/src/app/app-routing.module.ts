@@ -8,6 +8,9 @@ import { RegisterComponent } from './register/register.component';
 import { AdminComponent } from './admin/admin.component';
 import { MyOrdersComponent } from './my-orders/my-orders.component';
 import { RabbitmqAdminComponent } from './rabbitmq-admin/rabbitmq-admin.component';
+import { KafkaAdminComponent } from './kafka-admin/kafka-admin.component';
+import { ReportsComponent } from './reports/reports.component';
+import { AuditComponent } from './audit/audit.component';
 
 const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -29,6 +32,21 @@ const routes: Routes = [
   {
     path: 'admin/rabbitmq',
     component: RabbitmqAdminComponent,
+    canActivate: [MsalGuard, AdminRoleGuard]
+  },
+  {
+    path: 'admin/kafka',
+    component: KafkaAdminComponent,
+    canActivate: [MsalGuard, AdminRoleGuard]
+  },
+  {
+    path: 'admin/reports',
+    component: ReportsComponent,
+    canActivate: [MsalGuard, AdminRoleGuard]
+  },
+  {
+    path: 'admin/audit',
+    component: AuditComponent,
     canActivate: [MsalGuard, AdminRoleGuard]
   },
   { path: '**', redirectTo: '' }

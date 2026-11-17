@@ -1,0 +1,45 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: audit-service
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0
+          audiences: api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: '*'
+        spring.json.add.type.headers: false
+      auto-offset-reset: earliest
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+cors:
+  allowed-origins: "http://localhost:4200,https://pastito-247.github.io"
+
+kafka:
+  consumer:
+    group:
+      audit: ${KAFKA_CONSUMER_GROUP_AUDIT:tuki-audit}
+  topics:
+    order-events: ${KAFKA_ORDER_TOPIC:tuki.order.events}
+    payment-events: ${KAFKA_PAYMENT_TOPIC:tuki.payment.events}
+    order-events-dlt: ${KAFKA_ORDER_DLT_TOPIC:tuki.order.events.DLT}
+    payment-events-dlt: ${KAFKA_PAYMENT_DLT_TOPIC:tuki.payment.events.DLT}
+
+logging:
+  level:
+    com.ecommerce: INFO

@@ -11,6 +11,9 @@ import { RegisterComponent } from './register/register.component';
 import { AdminComponent } from './admin/admin.component';
 import { MyOrdersComponent } from './my-orders/my-orders.component';
 import { RabbitmqAdminComponent } from './rabbitmq-admin/rabbitmq-admin.component';
+import { KafkaAdminComponent } from './kafka-admin/kafka-admin.component';
+import { ReportsComponent } from './reports/reports.component';
+import { AuditComponent } from './audit/audit.component';
 
 import {
   MsalModule,
@@ -77,7 +80,10 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     [environment.usersUrl, environment.scopes],
     [environment.ordersUrl, environment.scopes],
     [environment.paymentsUrl, environment.scopes],
-    [environment.rabbitUrl, environment.scopes]
+    [environment.rabbitUrl, environment.scopes],
+    [environment.reportsUrl, environment.scopes],
+    [environment.auditUrl, environment.scopes],
+    [environment.kafkaAdminUrl, environment.scopes]
   ])
 };
 
@@ -89,7 +95,10 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     RegisterComponent,
     AdminComponent,
     MyOrdersComponent,
-    RabbitmqAdminComponent
+    RabbitmqAdminComponent,
+    KafkaAdminComponent,
+    ReportsComponent,
+    AuditComponent
   ],
 
   imports: [

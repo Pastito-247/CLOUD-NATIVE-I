@@ -36,6 +36,23 @@ spring:
           # se aceptan ambos. Debe coincidir con el JWT authorizer del API Gateway.
           audiences: api://tuki-tech-api,66c0f84b-3701-42fb-9189-3f4092cba201
 
+  # Kafka (EFT): productor de eventos de pedido. Overridable por entorno.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+        max.block.ms: 3000
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: '*'
+        spring.json.add.type.headers: false
+      auto-offset-reset: earliest
+
   # RabbitMQ (CloudAMQP / instancia existente). Overridable por variables de entorno.
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
@@ -83,6 +100,12 @@ messaging:
   retry:
     max-attempts: 3
     delay-ms: 500
+
+# Kafka topics del dominio (EFT)
+kafka:
+  topics:
+    order-events: ${KAFKA_ORDER_TOPIC:tuki.order.events}
+    order-events-dlt: ${KAFKA_ORDER_DLT_TOPIC:tuki.order.events.DLT}
 
 # Logging
 logging:
