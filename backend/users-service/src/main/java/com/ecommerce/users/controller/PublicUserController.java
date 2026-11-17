@@ -1,9 +1,5 @@
 package com.ecommerce.users.controller;
 
-import com.ecommerce.users.dto.RegisterRequest;
-import com.ecommerce.users.model.User;
-import com.ecommerce.users.service.UserService;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,22 +10,16 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * API publica de usuarios.
  *
- * Expone el registro de cuentas desde la pagina. Es publico (no requiere JWT)
- * porque el usuario aun no ha iniciado sesion; por eso vive bajo {@code /api/public}.
+ * El registro publico se elimino en el EFT: los clientes se auto-registran en
+ * AWS Cognito (siempre con rol customer). Este endpoint se conserva solo para
+ * responder 410 y evitar que un visitante cree cuentas con rol arbitrario.
  */
 @RestController
 @RequestMapping("/api/public/users")
 public class PublicUserController {
 
-    private final UserService userService;
-
-    public PublicUserController(UserService userService) {
-        this.userService = userService;
-    }
-
     @PostMapping("/register")
-    public ResponseEntity<User> register(@Valid @RequestBody RegisterRequest request) {
-        User created = userService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<Void> register() {
+        return ResponseEntity.status(HttpStatus.GONE).build();
     }
 }

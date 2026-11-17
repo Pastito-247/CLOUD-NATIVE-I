@@ -68,6 +68,11 @@ spring:
         prefetch: 1
         default-requeue-rejected: false
 
+# Cognito (EFT): segunda fuente de identidad para usuarios publicos.
+cognito:
+  issuer: ${COGNITO_ISSUER:}
+  client-id: ${COGNITO_CLIENT_ID:}
+
 # CORS Configuration
 cors:
   allowed-origins: "http://localhost:4200,https://pastito-247.github.io"

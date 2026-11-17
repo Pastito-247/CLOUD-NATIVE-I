@@ -77,6 +77,11 @@ notification:
     from: ${MAIL_FROM:}
     from-name: ${MAIL_FROM_NAME:Tuki-Tech}
 
+# Cognito (EFT): segunda fuente de identidad para usuarios publicos.
+cognito:
+  issuer: ${COGNITO_ISSUER:}
+  client-id: ${COGNITO_CLIENT_ID:}
+
 # CORS Configuration
 cors:
   allowed-origins: "http://localhost:4200,https://pastito-247.github.io"

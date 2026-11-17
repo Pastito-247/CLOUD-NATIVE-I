@@ -83,8 +83,28 @@
         Mis compras
       </a>
 
+      <a
+        *ngIf="!isLoggedIn && !isPublicLoggedIn"
+        routerLink="/publico"
+        routerLinkActive="active"
+        (click)="menuOpen = false">
+        Área cliente
+      </a>
+
+      <a
+        *ngIf="isPublicLoggedIn && !isLoggedIn"
+        routerLink="/mis-compras"
+        routerLinkActive="active"
+        (click)="menuOpen = false">
+        Mis compras
+      </a>
+
       <span *ngIf="isLoggedIn && userEmail" class="user-email" title="{{ userEmail }}">
         {{ userEmail }}
+      </span>
+
+      <span *ngIf="isPublicLoggedIn && !isLoggedIn && publicEmail" class="user-email" title="{{ publicEmail }}">
+        {{ publicEmail }} (cliente)
       </span>
 
       <button class="cart-button" (click)="toggleCart()">
@@ -108,6 +128,10 @@
 
       <button *ngIf="isLoggedIn" class="nav-btn nav-logout" (click)="logout()">
         Cerrar sesión
+      </button>
+
+      <button *ngIf="isPublicLoggedIn && !isLoggedIn" class="nav-btn nav-logout" (click)="logoutPublic()">
+        Salir (cliente)
       </button>
 
     </div>

@@ -4,18 +4,20 @@ import { MsalGuard } from '@azure/msal-angular';
 import { AdminRoleGuard } from './auth/admin-role.guard';
 import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
-import { RegisterComponent } from './register/register.component';
+
 import { AdminComponent } from './admin/admin.component';
 import { MyOrdersComponent } from './my-orders/my-orders.component';
 import { RabbitmqAdminComponent } from './rabbitmq-admin/rabbitmq-admin.component';
 import { KafkaAdminComponent } from './kafka-admin/kafka-admin.component';
 import { ReportsComponent } from './reports/reports.component';
 import { AuditComponent } from './audit/audit.component';
+import { PublicAuthComponent } from './public-auth/public-auth.component';
 
 const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
+  { path: 'register', redirectTo: 'publico' },
+  { path: 'publico', component: PublicAuthComponent },
   // Requiere estar autenticado (cualquier usuario de Azure AD)
   {
     path: 'my-orders',
