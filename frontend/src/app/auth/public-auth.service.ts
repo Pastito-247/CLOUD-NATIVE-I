@@ -110,6 +110,10 @@ export class PublicAuthService {
     return this.getTokens()?.accessToken || null;
   }
 
+  getIdToken(): string | null {
+    return this.getTokens()?.idToken || null;
+  }
+
   getEmail(): string | null {
     return this.getTokens()?.email || null;
   }

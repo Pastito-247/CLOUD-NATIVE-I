@@ -8,7 +8,7 @@ export class CognitoInterceptor implements HttpInterceptor {
   constructor(private publicAuth: PublicAuthService) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    const token = this.publicAuth.getAccessToken();
+    const token = this.publicAuth.getIdToken();
     const isCustomerRoute = req.url.includes('/api/customer/');
 
     if (token && isCustomerRoute) {

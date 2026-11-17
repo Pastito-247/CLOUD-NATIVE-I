@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
  * dependa de la API de mensajeria. Un fallo de mensajeria no debe romper la
  * creacion del pedido.
  */
-@Component
+@Component("rabbitOrderEventPublisher")
 public class OrderEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(OrderEventPublisher.class);

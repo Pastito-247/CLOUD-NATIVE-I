@@ -373,7 +373,7 @@ Variables opcionales:
 | `BACKEND_HOST` | `http://184.192.252.196` | EC2 detrás del gateway |
 | `ENTRA_ISSUER` / `ENTRA_AUTHORITY` | tenant actual | Authorizer `tuki-jwt` |
 | `ENTRA_API_URI` | `api://tuki-tech-api` | Audience Entra |
-| `CORS_ORIGIN` | `https://pastito-247.github.io/CLOUD-NATIVE-I` | Origen Pages |
+| `CORS_ORIGIN` | `https://pastito-247.github.io` | Origen Pages |
 
 Si no hay credenciales AWS, el script falla con
 `An error occurred (NoCredentials): Unable to locate credentials`. Configura
@@ -406,7 +406,7 @@ integraciones `-bare` más arriba).
 
 ### CORS y throttling
 
-- CORS: `http://localhost:4200` y `https://pastito-247.github.io/CLOUD-NATIVE-I`,
+- CORS: `http://localhost:4200` y `https://pastito-247.github.io`,
   headers `authorization,content-type,x-requested-with`.
 - Stage `$default`: `50` rps / burst `100`.
 - Todas las rutas `ANY /api/public/**`: `20` rps / burst `40` mediante
@@ -485,3 +485,28 @@ Pages. El access token es el mismo.
 | Response timeout | Integración HTTP lenta | Los servicios arrancan hasta 30-60s; espera a que `systemctl status` diga running |
 | Todo funciona local pero no en Pages | El CI usó `PROD_BACKEND_URL` vieja | Actualiza la **Variable de GitHub** y re-corre el workflow |
 | `invalid_token` en backend aunque API GW dejó pasar | La audience del backend (`audiences`) no coincide | Verifica `spring.security.oauth2.resourceserver.jwt.audiences=api://tuki-tech-api` en los 5 servicios |
+
+---
+
+## Despliegue EFT real (lab estudiante)
+
+- API: `3cbwduklgb`
+- Endpoint: `https://3cbwduklgb.execute-api.us-east-1.amazonaws.com`
+- EIP del EC2: `184.195.234.120`
+- Backend del gateway: `http://184.195.234.120` (nginx en puerto 80)
+- User Pool: `us-east-1_SzogHEuXI`
+- App Client: `a00kh0fv055nqc8mqqmge24p7`
+- Usuario demo: `cliente@tuki.cl` (password en `.env` local, variable `COGNITO_DEMO_PASSWORD`)
+- RDS: `tuki-postgres.cmvwnxo9nvlo.us-east-1.rds.amazonaws.com`
+
+El authorizer Cognito valida `aud`, por lo que el frontend envía el **ID token**
+(no el access token, que no incluye `aud`) en `/api/customer/*`.
+
+Verificación ejecutada:
+
+| Request | Resultado |
+|---|---|
+| `GET /api/public/products` | `200` |
+| `GET /api/public/categories` | `200` |
+| `GET /api/orders` sin token | `401` |
+| `GET /api/orders` con token inválido | `401` |

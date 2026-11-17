@@ -1,0 +1,37 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, entrega-3]
+  pull_request:
+    branches: [main, entrega-3]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - products-service
+          - categories-service
+          - users-service
+          - orders-service
+          - rabbitmq-admin-service
+          - payments-service
+          - report-service
+          - audit-service
+          - kafka-admin-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Test ${{ matrix.service }}
+        run: mvn -B -q -f backend/${{ matrix.service }}/pom.xml test

@@ -60,27 +60,27 @@ mantener Kafka local para no pagar un EC2 más grande, la defensa se divide así
 
 | Requisito | Estado | Acción |
 |---|---|---|
-| F01-F04 login interno, JWT, roles | ✅ | Mantener; corregir inconsistencia de roles |
-| F05-F08 entidad principal | ✅ | Agregar ítems de pedido y ownership |
+| F01-F04 login interno, JWT, roles | ✅ | Mantener; roles corregidos en Cognito |
+| F05-F08 entidad principal | ✅ | Ítems de pedido y ownership agregados |
 | F09-F10 entidad secundaria | ✅ | Sin cambios mayores |
-| F11-F13 RabbitMQ + DLQ + log | ✅ | Reordenar a topología "comandos" y demostrar 3 colas |
-| F14-F17 eventos Kafka, KPIs, auditoría, reacción | ❌ | Implementar productores/consumidores + servicios report/audit |
+| F11-F13 RabbitMQ + DLQ + log | ✅ | Topología de comandos y demo de fallo implementadas |
+| F14-F17 eventos Kafka, KPIs, auditoría, reacción | ✅ | Productores, consumidores, report y audit implementados |
 | F18 admin RabbitMQ | ✅ | Sin cambios |
-| F19-F21 admin/supervisión/resiliencia Kafka | ❌ | `kafka-admin-service` + Kafka UI + DLT |
-| F22 API Manager | ⚠️ | Existe, pero falta Cognito, rutas guest/customer y backend arriba |
-| F23 despliegue | ⚠️ | EC2 caído (público da 503); RDS pendiente |
-| F24-F28 Cognito (registro, confirmación, login, rol, forgot, logout) | ❌ | Implementar |
+| F19-F21 admin/supervisión/resiliencia Kafka | ✅ | `kafka-admin-service`, Kafka UI y DLT implementados |
+| F22 API Manager | ✅ | Authorizers, rutas, CORS y throttling aplicados |
+| F23 despliegue | ✅ | EC2 + RDS + nginx + API Gateway verificados |
+| F24-F28 Cognito (registro, confirmación, login, rol, forgot, logout) | ✅ | User Pool, cliente, grupo y usuario demo creados |
 | F29 catálogo público | ✅ | Mantener |
-| F30-F33 transacción guest, consulta por código, límites, convivencia | ❌ | Implementar endpoints y pantallas |
+| F30-F33 transacción guest, consulta por código, límites, convivencia | ✅ | Endpoints y pantallas implementados |
 | T01 IDaaS interno | ✅ | Mantener |
-| T02-T05 Cognito, tokens, rutas, roles | ❌ | Implementar |
-| T06-T08 Kafka 3+3, tópicos, UI | ❌ | Docker Compose |
-| T09 RabbitMQ 2 nodos, 3 colas + DLQ, direct + topic | ⚠️ | Ya hay 2 nodos y DLQ; falta topología direct/topic explícita |
-| T10 despliegue cloud | ⚠️ | RDS + EC2 + API Gateway |
-| T11-T17 Kafka en código | ❌ | Implementar |
-| BD cloud | ❌ | RDS PostgreSQL |
-| Seguridad | ⚠️ | Registro permite rol admin; IDOR en pedidos/usuarios/pagos |
-| CI/tests backend | ❌ | GitHub Actions + pruebas |
+| T02-T05 Cognito, tokens, rutas, roles | ✅ | Multi-issuer y `ROLE_customer` forzado |
+| T06-T08 Kafka 3+3, tópicos, UI | ✅ | `docker-compose.kafka.yml` y script de tópicos |
+| T09 RabbitMQ 2 nodos, 3 colas + DLQ, direct + topic | ✅ | `DemoTopologyConfig` + endpoints demo |
+| T10 despliegue cloud | ✅ | RDS, EC2, nginx y API Gateway operativos |
+| T11-T17 Kafka en código | ✅ | Productores, consumidores y DLT implementados |
+| BD cloud | ✅ | RDS PostgreSQL con 7 bases creadas |
+| Seguridad | ✅ | Registro admin eliminado y consultas por CustomerUserDetails |
+| CI/tests backend | ✅ | `.github/workflows/backend-ci.yml` con 9 servicios |
 
 ### 2.3 Riesgos detectados que hay que corregir sí o sí
 
@@ -660,20 +660,20 @@ Cada fase termina con commit en `entrega-3` y criterio de aceptación verificado
 
 ### Fase 7 — RDS + despliegue (2 días) — 15%
 
-- [ ] Crear RDS PostgreSQL y bases.
-- [ ] Migrar los 6 servicios a PostgreSQL.
-- [ ] Seed idempotente.
-- [ ] Dockerfiles y compose cloud.
-- [ ] Desplegar en EC2 y verificar desde API Gateway.
-- [ ] Actualizar guías y variables.
+- [x] Crear RDS PostgreSQL y bases.
+- [x] Migrar los 5 servicios JPA a PostgreSQL.
+- [x] Seed idempotente.
+- [x] Dockerfiles y compose cloud.
+- [x] Desplegar en EC2 y verificar desde API Gateway.
+- [x] Actualizar guías y variables.
 
 ### Fase 8 — Cierre (1-2 días)
 
-- [ ] Arreglos de seguridad (IDOR, roles, registro).
-- [ ] CI backend + tests.
-- [ ] `GUIA_DEFENSA_EFT.md` con guion de 10 minutos.
+- [x] Arreglos de seguridad (IDOR, roles, registro).
+- [x] CI backend + tests.
+- [x] `GUIA_DEFENSA_EFT.md` con guion de 10 minutos.
 - [ ] Ensayo cronometrado y video.
-- [ ] Checklist final de la pauta.
+- [x] Checklist final de la pauta.
 
 ---
 
@@ -731,9 +731,9 @@ Cada fase termina con commit en `entrega-3` y criterio de aceptación verificado
 
 ### Checklist pre-demo
 
-- [ ] RDS arriba y seed cargado.
-- [ ] EC2 arriba (hoy está caído: el gateway da 503).
-- [ ] Usuario de prueba Cognito confirmado (evitar límite de emails).
+- [x] RDS arriba y seed cargado.
+- [x] EC2 arriba (EIP `184.195.234.120`, gateway sin 503).
+- [x] Usuario de prueba Cognito confirmado (`cliente@tuki.cl`).
 - [ ] Usuario admin Entra con rol `admin`.
 - [ ] Kafka UI y Rabbit Management abiertos en pestañas.
 - [ ] Frontend apuntando al gateway correcto.

@@ -9,7 +9,7 @@ ENTRA_ISSUER="${ENTRA_ISSUER:-${ENTRA_AUTHORITY:-https://login.microsoftonline.c
 ENTRA_AUDIENCE="${ENTRA_API_URI:-api://tuki-tech-api}"
 COGNITO_ISSUER="${COGNITO_ISSUER:-}"
 COGNITO_CLIENT_ID="${COGNITO_CLIENT_ID:-}"
-CORS_ORIGIN="${CORS_ORIGIN:-https://pastito-247.github.io/CLOUD-NATIVE-I}"
+CORS_ORIGIN="${CORS_ORIGIN:-https://pastito-247.github.io}"
 
 if [[ -z "$COGNITO_ISSUER" || -z "$COGNITO_CLIENT_ID" ]]; then
   echo "Faltan COGNITO_ISSUER o COGNITO_CLIENT_ID. Copialos de .env." >&2
@@ -34,7 +34,7 @@ upsert_authorizer() {
   local jwt_config
 
   id=$(aws2 get-authorizers --api-id "$API_ID" \
-    --query "Items[?Name=='$name'].AuthorizerId | [0]" --output text 2>/dev/null || true)
+    --query "Items[?Name=='$name'].AuthorizerId" --output text 2>/dev/null | head -n 1 || true)
   jwt_config="{\"Issuer\":\"$issuer\",\"Audience\":[\"$audience\"]}"
 
   if [[ -z "$id" || "$id" == "None" ]]; then
@@ -64,7 +64,7 @@ upsert_integration() {
   local id
 
   id=$(aws2 get-integrations --api-id "$API_ID" \
-    --query "Items[?IntegrationUri=='$uri'].IntegrationId | [0]" --output text 2>/dev/null || true)
+    --query "Items[?IntegrationUri=='$uri'].IntegrationId" --output text 2>/dev/null | head -n 1 || true)
 
   if [[ -z "$id" || "$id" == "None" ]]; then
     id=$(aws2 create-integration \
@@ -99,7 +99,7 @@ upsert_route() {
 
   target="integrations/$integration_id"
   route_id=$(aws2 get-routes --api-id "$API_ID" \
-    --query "Items[?RouteKey=='$route_key'].RouteId | [0]" --output text 2>/dev/null || true)
+    --query "Items[?RouteKey=='$route_key'].RouteId" --output text 2>/dev/null | head -n 1 || true)
 
   args=(--authorization-type "$auth_type")
   if [[ "$auth_type" == "JWT" ]]; then

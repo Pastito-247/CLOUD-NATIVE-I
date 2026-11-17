@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
-@Component
+@Component("kafkaOrderEventPublisher")
 public class OrderEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(OrderEventPublisher.class);

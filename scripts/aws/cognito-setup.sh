@@ -14,35 +14,52 @@ REGION="${COGNITO_REGION:-us-east-1}"
 POOL_NAME="tuki-public-users"
 CLIENT_NAME="tuki-web"
 
-echo "Creando User Pool '$POOL_NAME' en $REGION ..."
-POOL_ID=$(aws cognito-idp create-user-pool \
+echo "Buscando User Pool '$POOL_NAME' en $REGION ..."
+POOL_ID=$(aws cognito-idp list-user-pools \
   --region "$REGION" \
-  --pool-name "$POOL_NAME" \
-  --policies '{
-    "PasswordPolicy": {
-      "MinimumLength": 8,
-      "RequireUppercase": true,
-      "RequireLowercase": true,
-      "RequireNumbers": true,
-      "RequireSymbols": false
-    }
-  }' \
-  --auto-verified-attributes email \
-  --admin-create-user-config '{"AllowAdminCreateUserOnly": false}' \
-  --query 'UserPool.Id' --output text)
+  --max-results 60 \
+  --query "UserPools[?Name=='$POOL_NAME'].Id" --output text | head -n 1)
 
-echo "User Pool creado: $POOL_ID"
+if [[ -z "$POOL_ID" || "$POOL_ID" == "None" ]]; then
+  POOL_ID=$(aws cognito-idp create-user-pool \
+    --region "$REGION" \
+    --pool-name "$POOL_NAME" \
+    --policies '{
+      "PasswordPolicy": {
+        "MinimumLength": 8,
+        "RequireUppercase": true,
+        "RequireLowercase": true,
+        "RequireNumbers": true,
+        "RequireSymbols": false
+      }
+    }' \
+    --auto-verified-attributes email \
+    --admin-create-user-config '{"AllowAdminCreateUserOnly": false}' \
+    --query 'UserPool.Id' --output text)
+  echo "+ User Pool creado: $POOL_ID"
+else
+  echo "= User Pool existente: $POOL_ID"
+fi
 
-echo "Creando App Client '$CLIENT_NAME' (sin secret, SRP + refresh) ..."
-CLIENT_ID=$(aws cognito-idp create-user-pool-client \
+echo "Buscando App Client '$CLIENT_NAME' ..."
+CLIENT_ID=$(aws cognito-idp list-user-pool-clients \
   --region "$REGION" \
   --user-pool-id "$POOL_ID" \
-  --client-name "$CLIENT_NAME" \
-  --no-generate-secret \
-  --explicit-auth-flows ALLOW_USER_SRP_AUTH ALLOW_REFRESH_TOKEN_AUTH ALLOW_USER_PASSWORD_AUTH \
-  --query 'UserPoolClient.ClientId' --output text)
+  --max-results 60 \
+  --query "UserPoolClients[?ClientName=='$CLIENT_NAME'].ClientId" --output text | head -n 1)
 
-echo "App Client creado: $CLIENT_ID"
+if [[ -z "$CLIENT_ID" || "$CLIENT_ID" == "None" ]]; then
+  CLIENT_ID=$(aws cognito-idp create-user-pool-client \
+    --region "$REGION" \
+    --user-pool-id "$POOL_ID" \
+    --client-name "$CLIENT_NAME" \
+    --no-generate-secret \
+    --explicit-auth-flows ALLOW_USER_SRP_AUTH ALLOW_REFRESH_TOKEN_AUTH ALLOW_USER_PASSWORD_AUTH \
+    --query 'UserPoolClient.ClientId' --output text)
+  echo "+ App Client creado: $CLIENT_ID"
+else
+  echo "= App Client existente: $CLIENT_ID"
+fi
 
 echo "Creando grupo 'customer' ..."
 aws cognito-idp create-group \
