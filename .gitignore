@@ -33,6 +33,10 @@
 /.angular-cli.json
 /.ng/
 
+# Maven build artefacts
+target/
+**/target/
+
 # TypeScript cache
 *.tsbuildinfo
 

@@ -1,5 +1,0 @@
-com\ecommerce\report\controller\ReportController.class
-com\ecommerce\report\ReportServiceApplication.class
-com\ecommerce\report\config\KafkaConfig.class
-com\ecommerce\report\config\SecurityConfig.class
-com\ecommerce\report\kafka\ReportEventConsumer.class

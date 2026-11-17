@@ -1,5 +1,0 @@
-com\ecommerce\audit\AuditServiceApplication.class
-com\ecommerce\audit\controller\AuditController.class
-com\ecommerce\audit\config\KafkaConfig.class
-com\ecommerce\audit\config\SecurityConfig.class
-com\ecommerce\audit\kafka\AuditEventConsumer.class
