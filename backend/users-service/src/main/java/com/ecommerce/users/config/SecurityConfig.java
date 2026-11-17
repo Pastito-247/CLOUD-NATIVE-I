@@ -167,13 +167,9 @@ public class SecurityConfig {
             java.util.Collection<org.springframework.security.core.GrantedAuthority> authorities =
                     new java.util.ArrayList<>(converter.convert(jwt));
             String issuer = String.valueOf(jwt.getClaims().get("iss"));
-            Object groups = jwt.getClaims().get("cognito:groups");
-            if (issuer.contains("cognito-idp") && authorities.isEmpty()) {
+            if (issuer.contains("cognito-idp")) {
+                authorities.clear();
                 authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_customer"));
-            } else if (issuer.contains("cognito-idp") && groups instanceof List<?> list) {
-                boolean admin = list.stream().anyMatch(g -> "admin".equalsIgnoreCase(String.valueOf(g)));
-                authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority(
-                        admin ? "ROLE_admin" : "ROLE_customer"));
             }
             return authorities;
         });

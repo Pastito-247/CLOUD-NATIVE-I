@@ -61,8 +61,8 @@ claim `iss` del JWT y elige el decoder correcto:
 Mapeo de roles (`SecurityConfig.jwtAuthenticationConverter`):
 
 - Entra: claim `roles` → `ROLE_admin|staff|customer`.
-- Cognito: si trae `cognito:groups=admin` → `ROLE_admin`; si no → `ROLE_customer`.
-- **Un token Cognito sin grupo nunca obtiene `ROLE_admin`**.
+- Cognito: siempre `ROLE_customer`, se ignora el claim `cognito:groups`.
+- **Un token Cognito nunca obtiene `ROLE_admin`**.
 
 ## 4. Rutas
 

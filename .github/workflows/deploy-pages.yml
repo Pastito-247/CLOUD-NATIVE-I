@@ -41,6 +41,10 @@ jobs:
         USERS_SERVICE_PORT=${{ vars.USERS_SERVICE_PORT }}
         PROD_BACKEND_URL=${{ vars.PROD_BACKEND_URL }}
         PROD_REDIRECT_URI=${{ vars.PROD_REDIRECT_URI }}
+        COGNITO_REGION=${{ vars.COGNITO_REGION }}
+        COGNITO_USER_POOL_ID=${{ vars.COGNITO_USER_POOL_ID }}
+        COGNITO_CLIENT_ID=${{ vars.COGNITO_CLIENT_ID }}
+        COGNITO_ISSUER=${{ vars.COGNITO_ISSUER }}
         EOF
 
     - name: Build Angular app
