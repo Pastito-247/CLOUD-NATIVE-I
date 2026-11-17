@@ -97,6 +97,67 @@ Los nombres **solo** viven en `application.yml` (cargados por
 > que cada cola define su `x-dead-letter-routing-key` (p. ej.
 > `payment.screen.dlq`), que coincide con el binding de la DLQ.
 
+## 1.1 Topología EFT — comandos y eventos de catálogo
+
+`rabbitmq-admin-service` declara automáticamente una capa nueva para la demo del
+EFT (configuración `DemoTopologyConfig`). No reemplaza la topología de la
+Entrega 2; se agrega para mostrar explícitamente **direct + topic + DLQ**.
+
+| Tipo | Nombre | Detalle |
+|---|---|---|
+| Exchange direct | `tuki.commands` | Comandos de negocio |
+| Exchange topic | `tuki.catalog.events` | Eventos `product.*` y `category.*` |
+| Exchange direct | `tuki.dlx` | Dead-letter de la demo EFT |
+| Cola | `tuki.notify.order.queue` | RK `notify.order` |
+| Cola | `tuki.notify.payment.queue` | RK `notify.payment` |
+| Cola | `tuki.notify.receipt.queue` | RK `notify.receipt` |
+| Cola | `tuki.catalog.sync.queue` | RK `product.*`, `category.*` |
+| DLQ | `tuki.notify.order.dlq` | Vía `tuki.dlx` / RK `tuki.notify.order.dlq` |
+| DLQ | `tuki.notify.payment.dlq` | Vía `tuki.dlx` / RK `tuki.notify.payment.dlq` |
+| DLQ | `tuki.notify.receipt.dlq` | Vía `tuki.dlx` / RK `tuki.notify.receipt.dlq` |
+| DLQ | `tuki.catalog.sync.dlq` | Vía `tuki.dlx` / RK `tuki.catalog.sync.dlq` |
+
+Las cuatro colas de trabajo tienen `x-dead-letter-exchange=tuki.dlx` y su
+`x-dead-letter-routing-key`. Los consumidores hacen 3 reintentos con la cabecera
+`x-retry-count`; al agotarlos hacen `basicNack(requeue=false)` y el mensaje cae
+en su DLQ. Los `@RabbitListener` de `DemoDeadLetterLogConsumer` registran
+`messageId`, `routingKey`, `x-death` y payload con el prefijo `[EFT-DLQ:]`.
+
+### Publicar mensajes de demo
+
+Requiere JWT de Entra con rol `admin` (todas las rutas `/api/rabbit/**` están
+protegidas):
+
+```bash
+curl -i http://localhost:8085/api/rabbit/demo/topology \
+  -H "Authorization: Bearer <JWT_ADMIN>"
+
+curl -i -X POST http://localhost:8085/api/rabbit/demo/publish \
+  -H "Authorization: Bearer <JWT_ADMIN>" -H "Content-Type: application/json" \
+  -d '{"exchange":"commands","routingKey":"notify.order","body":"pedido guest 123","fail":false}'
+
+curl -i -X POST http://localhost:8085/api/rabbit/demo/publish \
+  -H "Authorization: Bearer <JWT_ADMIN>" -H "Content-Type: application/json" \
+  -d '{"exchange":"commands","routingKey":"notify.payment","body":"pago invalido","fail":true}'
+
+curl -i -X POST http://localhost:8085/api/rabbit/demo/publish \
+  -H "Authorization: Bearer <JWT_ADMIN>" -H "Content-Type: application/json" \
+  -d '{"exchange":"catalog","routingKey":"product.created","body":"producto 42","fail":false}'
+```
+
+Con `fail:true` (o si el body contiene `fail`) verás en el log:
+
+```text
+[EFT-RETRY] queue=tuki.notify.payment.queue intento=1/3 ...
+[EFT-RETRY] queue=tuki.notify.payment.queue intento=2/3 ...
+[EFT-RETRY] queue=tuki.notify.payment.queue intento=3/3 ...
+[EFT-DLQ] reintentos agotados en tuki.notify.payment.queue; enviando a DLX tuki.dlx
+[EFT-DLQ:payment] messageId=... routingKey=... xDeath=... payload=...
+```
+
+También se puede publicar un mensaje inválido desde la Management UI en
+`tuki.commands` con RK `notify.receipt` y body que contenga `fail`.
+
 ## 2. Flujo asíncrono
 
 1. `POST /api/payments` → `PaymentService.createPayment` guarda el pago en
