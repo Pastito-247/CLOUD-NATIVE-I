@@ -51,7 +51,7 @@ export class PublicAuthComponent {
     this.error = '';
     this.publicAuth.signIn(this.email, this.password).then(() => {
       this.loading = false;
-      this.router.navigate(['/mis-compras']);
+      this.router.navigate(['/my-orders']);
     }).catch(err => {
       this.error = err.message || 'No se pudo iniciar sesión';
       this.loading = false;

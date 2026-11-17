@@ -14,6 +14,8 @@ import { KafkaAdminComponent } from './kafka-admin/kafka-admin.component';
 import { ReportsComponent } from './reports/reports.component';
 import { AuditComponent } from './audit/audit.component';
 import { PublicAuthComponent } from './public-auth/public-auth.component';
+import { GuestCheckoutComponent } from './guest-checkout/guest-checkout.component';
+import { TrackOrderComponent } from './track-order/track-order.component';
 
 import {
   MsalModule,
@@ -99,7 +101,9 @@ const msalInterceptorConfig: MsalInterceptorConfiguration = {
     KafkaAdminComponent,
     ReportsComponent,
     AuditComponent,
-    PublicAuthComponent
+    PublicAuthComponent,
+    GuestCheckoutComponent,
+    TrackOrderComponent
   ],
 
   imports: [

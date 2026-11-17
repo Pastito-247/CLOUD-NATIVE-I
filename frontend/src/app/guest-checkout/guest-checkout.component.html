@@ -1,0 +1,34 @@
+<div class="checkout-container">
+  <h1>Comprar como invitado</h1>
+  <p class="subtitle">No necesitas cuenta. Te daremos un código para seguir tu pedido.</p>
+
+  <p *ngIf="error" class="error">{{ error }}</p>
+
+  <div *ngIf="!confirmation">
+    <form (ngSubmit)="submit()">
+      <label>Nombre <input [(ngModel)]="customerName" name="customerName" required minlength="2" /></label>
+      <label>Correo <input type="email" [(ngModel)]="customerEmail" name="customerEmail" required /></label>
+      <label>Dirección <input [(ngModel)]="shippingAddress" name="shippingAddress" required minlength="5" /></label>
+
+      <h2>Resumen</h2>
+      <ul>
+        <li *ngFor="let item of items">
+          {{ item.product.name }} × {{ item.quantity }} — ${{ item.product.price }}
+        </li>
+      </ul>
+      <p><strong>Total estimado: ${{ cartService.getTotal() }}</strong></p>
+
+      <button class="btn-primary" [disabled]="loading || items.length === 0">
+        {{ loading ? 'Procesando…' : 'Confirmar pedido' }}
+      </button>
+    </form>
+  </div>
+
+  <div *ngIf="confirmation" class="confirmation">
+    <h2>¡Pedido creado!</h2>
+    <p>Guarda tu código de seguimiento:</p>
+    <div class="tracking-code">{{ confirmation.trackingCode }}</div>
+    <p>Estado: {{ confirmation.status }} — Total: ${{ confirmation.total }}</p>
+    <button class="btn-primary" (click)="goToTrack()">Seguir mi pedido</button>
+  </div>
+</div>

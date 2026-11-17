@@ -21,8 +21,16 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @NotBlank(message = "User email is required")
-    @Column(nullable = false)
+    @Column(unique = true, name = "tracking_code")
+    private String trackingCode;
+
+    private boolean guest;
+
+    private String customerName;
+
+    private String customerEmail;
+
+    @Column(nullable = true)
     private String userEmail;
     
     @NotNull(message = "Total is required")
@@ -62,6 +70,18 @@ public class Order {
     
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public String getTrackingCode() { return trackingCode; }
+    public void setTrackingCode(String trackingCode) { this.trackingCode = trackingCode; }
+
+    public boolean isGuest() { return guest; }
+    public void setGuest(boolean guest) { this.guest = guest; }
+
+    public String getCustomerName() { return customerName; }
+    public void setCustomerName(String customerName) { this.customerName = customerName; }
+
+    public String getCustomerEmail() { return customerEmail; }
+    public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
     
     public String getUserEmail() { return userEmail; }
     public void setUserEmail(String userEmail) { this.userEmail = userEmail; }

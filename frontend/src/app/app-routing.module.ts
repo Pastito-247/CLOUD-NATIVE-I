@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { MsalGuard } from '@azure/msal-angular';
+import { SessionGuard } from './auth/session.guard';
 import { AdminRoleGuard } from './auth/admin-role.guard';
 import { HomeComponent } from './home/home.component';
 import { LoginComponent } from './login/login.component';
@@ -12,17 +13,21 @@ import { KafkaAdminComponent } from './kafka-admin/kafka-admin.component';
 import { ReportsComponent } from './reports/reports.component';
 import { AuditComponent } from './audit/audit.component';
 import { PublicAuthComponent } from './public-auth/public-auth.component';
+import { GuestCheckoutComponent } from './guest-checkout/guest-checkout.component';
+import { TrackOrderComponent } from './track-order/track-order.component';
 
 const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', redirectTo: 'publico' },
   { path: 'publico', component: PublicAuthComponent },
-  // Requiere estar autenticado (cualquier usuario de Azure AD)
+  { path: 'checkout-invitado', component: GuestCheckoutComponent },
+  { path: 'seguir-pedido', component: TrackOrderComponent },
+  // Requiere sesion: Entra (interno) o Cognito (cliente publico)
   {
     path: 'my-orders',
     component: MyOrdersComponent,
-    canActivate: [MsalGuard]
+    canActivate: [SessionGuard]
   },
   {
     path: 'admin',

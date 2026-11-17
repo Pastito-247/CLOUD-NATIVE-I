@@ -93,7 +93,7 @@
 
       <a
         *ngIf="isPublicLoggedIn && !isLoggedIn"
-        routerLink="/mis-compras"
+        routerLink="/my-orders"
         routerLinkActive="active"
         (click)="menuOpen = false">
         Mis compras
@@ -240,8 +240,9 @@
       <button
         *ngIf="!isLoggedIn"
         class="btn-primary checkout-btn"
-        (click)="checkout()">
-        Inicia sesión para comprar
+        [disabled]="cartCount === 0"
+        (click)="checkoutAsGuest()">
+        Comprar como invitado
       </button>
 
       <button

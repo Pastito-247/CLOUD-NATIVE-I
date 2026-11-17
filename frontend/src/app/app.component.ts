@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import {
   MsalBroadcastService,
   MsalService
@@ -67,7 +68,8 @@ export class AppComponent implements OnInit, OnDestroy {
     private msalBroadcastService: MsalBroadcastService,
     private cartService: CartService,
     private http: HttpClient,
-    public publicAuth: PublicAuthService
+    public publicAuth: PublicAuthService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -186,6 +188,11 @@ export class AppComponent implements OnInit, OnDestroy {
       postLogoutRedirectUri:
         environment.msalConfig.auth.postLogoutRedirectUri
     });
+  }
+
+  checkoutAsGuest(): void {
+    this.cartOpen = false;
+    this.router.navigate(['/checkout-invitado']);
   }
 
   logoutPublic(): void {
