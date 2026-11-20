@@ -25,26 +25,31 @@ public class UserController {
     
     // Private endpoints - require authentication (any role)
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+    public ResponseEntity<User> getUserById(@PathVariable Long id,
+                                            org.springframework.security.core.Authentication authentication) {
         return userService.getUserById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .map(user -> {
+                    com.ecommerce.users.security.JwtEmailResolver.requireOwnerOrAdmin(authentication, user.getEmail());
+                    return ResponseEntity.ok(user);
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
-    
+
     @GetMapping("/email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
+    public ResponseEntity<User> getUserByEmail(@PathVariable String email,
+                                               org.springframework.security.core.Authentication authentication) {
+        com.ecommerce.users.security.JwtEmailResolver.requireOwnerOrAdmin(authentication, email);
         return userService.getUserByEmail(email)
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
-    
+
     @GetMapping("/me")
     public ResponseEntity<User> getCurrentUser(org.springframework.security.core.Authentication authentication) {
-        // Extract email from JWT authentication
-        String email = authentication.getName();
+        String email = com.ecommerce.users.security.JwtEmailResolver.resolve(authentication);
         return userService.getUserByEmail(email)
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
     
     // Admin endpoints - require admin role

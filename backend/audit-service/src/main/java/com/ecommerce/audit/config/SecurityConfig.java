@@ -60,7 +60,7 @@ public class SecurityConfig {
     public JwtDecoder jwtDecoder() {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withIssuerLocation(issuerUri).build();
         OAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefault(), audienceValidator());
+                JwtValidators.createDefaultWithIssuer(issuerUri), audienceValidator());
         decoder.setJwtValidator(validator);
         return decoder;
     }

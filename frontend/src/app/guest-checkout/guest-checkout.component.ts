@@ -32,11 +32,23 @@ export class GuestCheckoutComponent {
       this.error = 'El carrito está vacío.';
       return;
     }
+    if (this.customerName.trim().length < 2) {
+      this.error = 'El nombre debe tener al menos 2 caracteres.';
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.customerEmail)) {
+      this.error = 'Ingresa un correo válido.';
+      return;
+    }
+    if (this.shippingAddress.trim().length < 5) {
+      this.error = 'La dirección debe tener al menos 5 caracteres.';
+      return;
+    }
     this.loading = true;
     const body = {
-      customerName: this.customerName,
-      customerEmail: this.customerEmail,
-      shippingAddress: this.shippingAddress,
+      customerName: this.customerName.trim(),
+      customerEmail: this.customerEmail.trim(),
+      shippingAddress: this.shippingAddress.trim(),
       items: this.items.map(i => ({
         productId: i.product.id,
         quantity: i.quantity

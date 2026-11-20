@@ -2,14 +2,28 @@
 
 Proyecto del ramo DESARROLLO CLOUD NATIVE I
 
+## Entrega final EFT
+
+- Repositorio: `https://github.com/Pastito-247/CLOUD-NATIVE-I`.
+- Página publicada: `https://pastito-247.github.io/CLOUD-NATIVE-I/`.
+- Estado y pendientes: [CHECKLIST_FINAL_EFT.md](./CHECKLIST_FINAL_EFT.md).
+- Material de estudio: [ESTUDIO_EFT.md](./ESTUDIO_EFT.md).
+- Diapositivas y notas: [PRESENTACION_EFT.md](./PRESENTACION_EFT.md).
+- Preguntas y glosario: [PREGUNTAS_Y_TERMINOS_EFT.md](./PREGUNTAS_Y_TERMINOS_EFT.md).
+- Guion de presentación: [GUION_PRESENTACION_EFT.md](./GUION_PRESENTACION_EFT.md).
+- Guion técnico y comandos: [GUIA_DEFENSA_EFT.md](./GUIA_DEFENSA_EFT.md).
+- Paquete limpio (sin `.env` ni llaves `.pem`):
+  `powershell -ExecutionPolicy Bypass -File .\scripts\create-delivery-archive.ps1`.
+
 ## Arquitectura
 
-### Frontend (Angular + MSAL/EntraID)
-- **Home**: Catálogo de productos públicos (API pública vía API Gateway)
-- **Login**: Autenticación con Azure EntraID (MSAL) - flujo Authorization Code + PKCE
-- **Admin Dashboard**: Gestión de productos, categorías, usuarios (perfilado por roles)
-- **Carrito/Checkout**: Funcionalidades para usuarios autenticados (APIs privadas con JWT)
-- **Validación de roles**: admin, customer, staff desde Azure AD
+### Frontend (Angular + MSAL/EntraID + Cognito)
+- **Home** `/`: catálogo público sin token (`/api/public/products`, `/api/public/categories`).
+- **Login interno** `/login`: Azure EntraID (MSAL), Authorization Code + PKCE.
+- **Acceso público** `/publico`: registro, confirmación, login, recuperación y logout con Cognito.
+- **Checkout invitado** `/checkout-invitado` y **seguimiento** `/seguir-pedido`: sin token.
+- **Mis compras** `/my-orders`: pedidos del usuario Entra o Cognito según la sesión activa.
+- **Admin** `/admin/**`: productos, categorías, roles, RabbitMQ, Kafka, reportes y auditoría (JWT + rol `admin`).
 
 ### Backend (Spring Boot Microservicios)
 - **Products Service** (puerto 8081): 
@@ -27,18 +41,24 @@ Proyecto del ramo DESARROLLO CLOUD NATIVE I
   - APIs privadas: `/api/orders/**` (requiere JWT)
   - APIs admin: GET all orders, PUT, DELETE (requiere rol admin)
   - Pedidos para revisión (staff/admin): `/api/orders/review/**`
-- **Payments Service** (puerto 8086): 
+- **Payments Service** (puerto 8086):
   - API de pago: `POST /api/payments` (requiere JWT)
   - Boletas: `/api/receipts/**` (consulta y descarga del PDF)
   - Orquesta el flujo asíncrono de pago y generación de boleta
+- **Report Service** (8087) y **Audit Service** (8088): consumidores Kafka de
+  `tuki.order.events` / `tuki.payment.events`, KPIs y trazabilidad en PostgreSQL cloud.
+- **Kafka Admin Service** (8089): crear/listar/eliminar tópicos, ver configs, grupos y offsets.
 
 ### Infraestructura AWS
-- **API Gateway**: 
-  - Rutas públicas: `/api/public/products/**`, `/api/public/categories/**`, `/api/public/users/**` (sin validación JWT)
-  - Rutas privadas: `/api/products/**`, `/api/categories/**`, `/api/users/**`, `/api/orders/**`, `/api/rabbit/**`, `/api/payments/**`, `/api/receipts/**` (validación JWT)
-  - Validación JWT con Azure AD issuer
-- **EC2**: Instancias para cada microservicio
-- **RDS**: Base de datos PostgreSQL cloud (una base por microservicio JPA)
+- **API Gateway** (`tuki-api`, stage `$default`):
+  - Públicas: `/api/public/products/**`, `/api/public/categories/**`, `/api/public/orders/**`, `/api/public/users/**` y `OPTIONS` de todas las rutas.
+  - Cliente Cognito: `/api/customer/orders/**` (authorizer JWT `tuki-cognito`).
+  - Protegidas Entra ID: `/api/products/**`, `/api/categories/**`, `/api/users/**`, `/api/orders/**`, `/api/payments/**`, `/api/receipts/**`, `/api/rabbit/**`, `/api/kafka/**`, `/api/reports/**`, `/api/audit/**` (authorizer JWT `tuki-jwt`).
+  - CORS para `http://localhost:4200` y `https://pastito-247.github.io`, throttling y auto-deploy.
+- **EC2**: backend systemd + RabbitMQ en Docker (cluster de 2 nodos en `docker-compose.ec2.yml`).
+- **RDS**: PostgreSQL `tuki-postgres`, una base por microservicio JPA.
+- **Cognito**: User Pool `tuki-public-users` para registro/login público; Entra ID para Admin/Operador.
+- **GitHub Pages**: frontend publicado en `https://pastito-247.github.io/CLOUD-NATIVE-I/`.
 
 ### IDaaS (Azure EntraID)
 - **Roles**: admin, customer, staff
@@ -63,11 +83,12 @@ Proyecto del ramo DESARROLLO CLOUD NATIVE I
      - `stock.decrement.queue` (products-service): descuento de stock.
   3. `POST /api/orders` -> `order.exchange` (fanout) -> `order.created.queue`
      (users-service): aviso "pedido recibido".
-  4. `POST /api/public/users/register` -> `user.exchange` (fanout) ->
-     `user.registered.queue` (users-service): correo de bienvenida (async).
-- **Registro de cuentas:** endpoint público `POST /api/public/users/register`
-  (crea el perfil en users-service, rol por defecto `customer`) y página
-  Angular `/register`. Los nombres de cola/exchange se centralizan en
+  4. Registro Cognito confirmado -> perfil de usuario y aviso de bienvenida
+     asíncrono (`user.exchange`, `user.registered.queue`).
+- **Registro de cuentas:** el registro público se hace en Cognito desde `/publico`
+  (email + contraseña + confirmación por código). El antiguo endpoint
+  `/api/public/users/register` responde `410 Gone`. Los usuarios internos se
+  gestionan desde el tenant Entra ID. Nombres de cola/exchange en
   `application.yml` (`messaging.*`).
 - **Dead Letter Queues (DLQ):** cada cola tiene `x-dead-letter-exchange` hacia
   `payment.dlx` / `receipt.dlx` / `order.dlx` / `user.dlx`; los mensajes que
@@ -79,6 +100,23 @@ Proyecto del ramo DESARROLLO CLOUD NATIVE I
 - Config centralizada en `application.yml` (`messaging.*`) con beans
   `Queue`/`Exchange`/`Binding`. Ver [RABBITMQ_SETUP.md](./RABBITMQ_SETUP.md).
 
+
+### Streaming de eventos (Kafka)
+- Cluster local: `docker-compose.kafka.yml` (3 Zookeeper + 3 brokers) o el stack
+  completo `docker-compose.full.yml`; Kafka UI en `http://localhost:8080`.
+- Tópicos `tuki.order.events` y `tuki.payment.events`: 3 particiones, RF 3,
+  `min.insync.replicas=2`, `cleanup.policy=delete` y retention 7 días.
+- Tópicos dead-letter `*.DLT`: retention 30 días. Productores DTO en orders y
+  payments; consumidores en report y audit con grupos `tuki-report` y
+  `tuki-audit`, reintentos (3 x 2 s) y publicación al DLT.
+- Administración: `/api/kafka/**` (rol `admin`) para tópicos, configuraciones,
+  grupos y offsets. Ver [KAFKA_SETUP.md](./KAFKA_SETUP.md).
+- Despliegue cloud en `tuki-backend-ef`: `docker-compose.ec2-kafka.yml` levanta un
+  modo reducido (1 Zookeeper + 1 broker, RF 1) con
+  `docker/kafka/kafka-init-ec2.sh`; crea los mismos 4 tópicos con 3 particiones,
+  `min.insync.replicas=1` y retention de 7/30 días. Los backends de la EC2 usan
+  `KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092`. La UI está en el puerto `8080` de la
+  EC2; para verla sin exponerla: `ssh -L 8080:127.0.0.1:8080 -i <clave> ubuntu@<IP_EC2>`.
 
 ## Instalación
 
@@ -331,6 +369,29 @@ CLOUD-NATIVE-I/
 - `DELETE /api/rabbit/bindings` - Eliminar binding
 
 ## Pruebas Locales
+
+### 0. Stack completo (recomendado para la defensa)
+```bash
+docker compose -f docker-compose.full.yml up -d --build
+docker compose -f docker-compose.full.yml ps
+```
+Levanta PostgreSQL, RabbitMQ (2 nodos), Kafka (3 ZK + 3 brokers), Kafka UI y los
+microservicios. Sin Docker, usa el apartado siguiente y ejecuta cada servicio.
+
+### 0b. Kafka en EC2 (modo reducido, RF 1)
+```bash
+mkdir -p ~/kafka
+cp docker-compose.ec2-kafka.yml ~/kafka/docker-compose.yml
+cp docker/kafka/kafka-init-ec2.sh ~/kafka/kafka-init.sh
+sed -i 's#./docker/kafka/kafka-init-ec2.sh#./kafka-init.sh#' ~/kafka/docker-compose.yml
+cd ~/kafka && docker compose up -d
+docker inspect --format '{{.State.Status}} {{.State.ExitCode}}' kafka-init
+```
+En la EC2 `tuki-backend-ef` el stack ya está desplegado y verificado:
+`zookeeper`, `kafka`, `kafka-ui` activos y `kafka-init` con `exited 0`. Los 4
+tópicos (`tuki.order.events`, `tuki.payment.events` y sus `*.DLT`) tienen 3
+particiones y RF 1. Se agregó un swapfile de 2 GiB para absorber el pico de
+memoria del broker en una `t3.medium`.
 
 ### 1. Iniciar microservicios
 ```bash

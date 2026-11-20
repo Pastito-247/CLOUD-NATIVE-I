@@ -46,7 +46,7 @@ npm run generate-env --prefix frontend
   código → login → JWT guardado en `localStorage` (`tuki_cognito_session`).
 - "Olvidé mi contraseña": código por email + nueva contraseña.
 - "Salir (cliente)": limpia la sesión local y el token.
-- `CognitoInterceptor` agrega `Authorization: Bearer <access_token>` solo a rutas
+- `CognitoInterceptor` agrega `Authorization: Bearer <id_token>` solo a rutas
   `/api/customer/**`. Las rutas Entra siguen usando `MsalInterceptor`.
 
 ## 3. Flujo en el backend
@@ -82,11 +82,11 @@ curl -i <GATEWAY>/api/public/products
 # Sin token: privado rechaza
 curl -i <GATEWAY>/api/orders        # 401
 
-# Con access_token de Cognito: cliente
+# Con ID token de Cognito: cliente
 curl -H "Authorization: Bearer <TOKEN>" <GATEWAY>/api/customer/orders   # 200
 
-# Con token Cognito en ruta admin: bloqueado
-curl -H "Authorization: Bearer <TOKEN>" <GATEWAY>/api/rabbit/queues     # 403
+# Con ID token Cognito en ruta Entra: el authorizer bloquea antes del backend
+curl -H "Authorization: Bearer <TOKEN>" <GATEWAY>/api/rabbit/queues     # 401
 ```
 
 > El registro local con selector de rol admin fue eliminado:

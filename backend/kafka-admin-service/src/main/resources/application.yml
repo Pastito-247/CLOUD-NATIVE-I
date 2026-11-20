@@ -16,7 +16,7 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
 
 cors:
-  allowed-origins: "http://localhost:4200,https://pastito-247.github.io"
+  allowed-origins: "${CORS_ALLOWED_ORIGINS:http://localhost:4200,https://pastito-247.github.io}"
 
 logging:
   level:

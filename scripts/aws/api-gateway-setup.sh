@@ -3,7 +3,7 @@ set -euo pipefail
 
 REGION="${API_GATEWAY_REGION:-${AWS_REGION:-us-east-1}}"
 API_ID="${API_GATEWAY_ID:-3cbwduklgb}"
-BACKEND_HOST="${BACKEND_HOST:-http://184.192.252.196}"
+BACKEND_HOST="${BACKEND_HOST:-http://184.195.234.120}"
 STAGE_NAME='$default'
 ENTRA_ISSUER="${ENTRA_ISSUER:-${ENTRA_AUTHORITY:-https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0}}"
 ENTRA_AUDIENCE="${ENTRA_API_URI:-api://tuki-tech-api}"

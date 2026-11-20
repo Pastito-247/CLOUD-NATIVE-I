@@ -75,7 +75,7 @@ cognito:
 
 # CORS Configuration
 cors:
-  allowed-origins: "http://localhost:4200,https://pastito-247.github.io"
+  allowed-origins: "${CORS_ALLOWED_ORIGINS:http://localhost:4200,https://pastito-247.github.io}"
 
 # ============================================================
 # Configuracion centralizada de mensajeria (RabbitMQ).
@@ -132,6 +132,11 @@ kafka:
   topics:
     payment-events: ${KAFKA_PAYMENT_TOPIC:tuki.payment.events}
     payment-events-dlt: ${KAFKA_PAYMENT_DLT_TOPIC:tuki.payment.events.DLT}
+
+# Catalogo de productos: el precio se valida en el servidor (EFT).
+products:
+  service:
+    url: ${PRODUCTS_SERVICE_URL:http://localhost:8081}
 
 # Logging
 logging:

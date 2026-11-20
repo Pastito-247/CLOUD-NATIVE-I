@@ -69,7 +69,7 @@ public class SecurityConfig {
 
         OAuth2TokenValidator<Jwt> withAudience =
             new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefault(),
+                JwtValidators.createDefaultWithIssuer(issuerUri),
                 audienceValidator()
             );
 

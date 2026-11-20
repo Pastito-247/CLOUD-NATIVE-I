@@ -1,42 +1,74 @@
 # =====================================================================
-# RabbitMQ para el EC2 (1 nodo, solo acceso local).
+# RabbitMQ para el EC2: cluster de 2 nodos, acceso AMQP solo local.
 #
 # El backend (servicios Spring Boot via systemd) corre en la MISMA
-# instancia y se conecta a 127.0.0.1:5672. El AMQP se publica solo en
-# loopback; la Management UI (15672) se publica en todas las interfaces
-# para abrirla desde el navegador con http://IP_EC2:15672.
+# instancia y se conecta a 127.0.0.1:5672 (nodo 1). El AMQP de ambos
+# nodos se publica solo en loopback; las Management UI (15672/15673)
+# se publican en todas las interfaces para abrirlas desde el navegador.
 #
-# Seguridad: en el Security Group abre SOLO el 15672 y restringelo a tu
-# IP (o usa un tunel SSH y vuelve a bindear a 127.0.0.1). NO abras el 5672.
+# Seguridad: en el Security Group abre SOLO 15672/15673 y restringelos a tu
+# IP (o usa un tunel SSH). NO abras los puertos 5672/5673.
 #
 # Uso en el EC2:
-#   mkdir -p ~/rabbitmq
+#   mkdir -p ~/rabbitmq/docker/rabbitmq
 #   # copiar este archivo como ~/rabbitmq/docker-compose.yml
+#   # copiar docker/rabbitmq/rabbitmq.conf a ~/rabbitmq/docker/rabbitmq/
 #   cd ~/rabbitmq
 #   docker compose up -d
 #   docker compose ps
 #
+# Verificacion del cluster:
+#   docker exec rabbitmq1 rabbitmqctl cluster_status
+#
 # Management UI:
-#   http://IP_EC2:15672   (tuki / tuki)
+#   http://IP_EC2:15672   (nodo 1)
+#   http://IP_EC2:15673   (nodo 2, mismo estado al estar en cluster)
 #
 # Si cambias credenciales y el volumen ya existe, RABBITMQ_DEFAULT_*
 # se ignora. Para reinicializar (BORRA colas/mensajes):
 #   docker compose down -v && docker compose up -d
 # =====================================================================
 services:
-  rabbitmq:
+  rabbitmq1:
     image: rabbitmq:3.13-management
-    container_name: rabbitmq
-    hostname: rabbitmq
+    container_name: rabbitmq1
+    hostname: rabbitmq1
     restart: unless-stopped
     environment:
+      RABBITMQ_ERLANG_COOKIE: tuki-cluster-cookie
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-tuki}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-tuki}
     ports:
-      - "127.0.0.1:5672:5672"     # AMQP: solo loopback (el backend corre en el EC2)
-      - "15672:15672"             # Management UI: expuesto; restringir en el Security Group
+      - "127.0.0.1:5672:5672"     # AMQP nodo 1: solo loopback
+      - "15672:15672"             # Management UI nodo 1
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq1-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  rabbitmq2:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq2
+    hostname: rabbitmq2
+    restart: unless-stopped
+    environment:
+      RABBITMQ_ERLANG_COOKIE: tuki-cluster-cookie
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-tuki}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-tuki}
+    ports:
+      - "127.0.0.1:5673:5672"     # AMQP nodo 2: solo loopback
+      - "15673:15672"             # Management UI nodo 2
+    volumes:
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq2-data:/var/lib/rabbitmq
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -45,4 +77,5 @@ services:
       start_period: 20s
 
 volumes:
-  rabbitmq-data:
+  rabbitmq1-data:
+  rabbitmq2-data:

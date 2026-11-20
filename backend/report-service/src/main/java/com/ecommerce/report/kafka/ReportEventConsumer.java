@@ -1,6 +1,12 @@
 package com.ecommerce.report.kafka;
 
+import com.ecommerce.report.model.ReportKpi;
+import com.ecommerce.report.repository.ReportKpiRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -18,6 +24,9 @@ public class ReportEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(ReportEventConsumer.class);
 
+    private final ReportKpiRepository repository;
+    private final ObjectMapper mapper;
+
     private final AtomicInteger totalOrders = new AtomicInteger();
     private final AtomicInteger confirmedOrders = new AtomicInteger();
     private final AtomicInteger guestOrders = new AtomicInteger();
@@ -26,6 +35,34 @@ public class ReportEventConsumer {
     private final AtomicInteger paymentsRejected = new AtomicInteger();
     private final AtomicReference<BigDecimal> revenue = new AtomicReference<>(BigDecimal.ZERO);
     private final Map<String, AtomicInteger> ordersByStatus = new ConcurrentHashMap<>();
+
+    public ReportEventConsumer(ReportKpiRepository repository, ObjectMapper mapper) {
+        this.repository = repository;
+        this.mapper = mapper;
+    }
+
+    @PostConstruct
+    public void loadFromDatabase() {
+        repository.findById(1L).ifPresent(kpi -> {
+            totalOrders.set((int) kpi.getTotalOrders());
+            confirmedOrders.set((int) kpi.getConfirmedOrders());
+            guestOrders.set((int) kpi.getGuestOrders());
+            authOrders.set((int) kpi.getAuthenticatedOrders());
+            paymentsApproved.set((int) kpi.getPaymentsApproved());
+            paymentsRejected.set((int) kpi.getPaymentsRejected());
+            revenue.set(kpi.getRevenue() == null ? BigDecimal.ZERO : kpi.getRevenue());
+            ordersByStatus.clear();
+            try {
+                Map<String, Integer> saved = mapper.readValue(
+                        kpi.getOrdersByStatus() == null ? "{}" : kpi.getOrdersByStatus(),
+                        new TypeReference<>() {
+                        });
+                saved.forEach((status, count) -> ordersByStatus.put(status, new AtomicInteger(count)));
+            } catch (JsonProcessingException e) {
+                log.warn("No se pudo leer orders_by_status persistido: {}", e.getMessage());
+            }
+        });
+    }
 
     @KafkaListener(
             topics = {"${kafka.topics.order-events}", "${kafka.topics.payment-events}"},
@@ -68,6 +105,7 @@ public class ReportEventConsumer {
                 case "PAYMENT_REJECTED" -> paymentsRejected.incrementAndGet();
                 default -> log.warn("Tipo de evento desconocido: {}", eventType);
             }
+            persist();
         } catch (Exception ex) {
             log.error("Error procesando evento (topic={} partition={} offset={}): {}",
                     topic, partition, offset, ex.getMessage());
@@ -83,6 +121,24 @@ public class ReportEventConsumer {
         if (amount != null) {
             revenue.updateAndGet(current -> current.add(amount));
         }
+    }
+
+    private synchronized void persist() {
+        ReportKpi kpi = repository.findById(1L).orElseGet(ReportKpi::new);
+        kpi.setId(1L);
+        kpi.setTotalOrders(totalOrders.get());
+        kpi.setConfirmedOrders(confirmedOrders.get());
+        kpi.setGuestOrders(guestOrders.get());
+        kpi.setAuthenticatedOrders(authOrders.get());
+        kpi.setPaymentsApproved(paymentsApproved.get());
+        kpi.setPaymentsRejected(paymentsRejected.get());
+        kpi.setRevenue(revenue.get());
+        try {
+            kpi.setOrdersByStatus(mapper.writeValueAsString(ordersByStatus));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("No se pudo serializar orders_by_status", e);
+        }
+        repository.save(kpi);
     }
 
     public Map<String, Object> summary() {

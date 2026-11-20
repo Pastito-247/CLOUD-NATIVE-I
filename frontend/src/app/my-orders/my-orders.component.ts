@@ -54,9 +54,15 @@ export class MyOrdersComponent implements OnInit, OnDestroy {
       this.error = '';
     }
 
-    const url = this.publicAuth.isLoggedIn()
-      ? environment.customerOrdersUrl
-      : `${environment.ordersUrl}/my-orders`;
+    if (!this.authService.isLoggedIn() && !this.publicAuth.isLoggedIn()) {
+      this.error = 'Inicia sesión para ver tus órdenes.';
+      this.loading = false;
+      return;
+    }
+
+    const url = this.authService.isLoggedIn()
+      ? `${environment.ordersUrl}/my-orders`
+      : environment.customerOrdersUrl;
 
     this.http.get<any[]>(url).subscribe({
       next: (data) => {

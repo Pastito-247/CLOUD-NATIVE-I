@@ -14,55 +14,67 @@
 # =====================================================================
 services:
   zookeeper1:
-    image: bitnami/zookeeper:3.9
+    image: bitnamilegacy/zookeeper:3.9
     container_name: zookeeper1
     hostname: zookeeper1
     environment:
       ZOO_SERVER_ID: 1
       ZOO_SERVERS: >-
-        server.1=zookeeper1:2888:3888;2181
-        server.2=zookeeper2:2888:3888;2181
-        server.3=zookeeper3:2888:3888;2181
+        zookeeper1:2888:3888,zookeeper2:2888:3888,zookeeper3:2888:3888
       ALLOW_ANONYMOUS_LOGIN: "yes"
     volumes:
       - zookeeper1-data:/bitnami/zookeeper
+    healthcheck:
+      test: ["CMD", "/opt/bitnami/scripts/zookeeper/healthcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     networks:
       - tuki-kafka
 
   zookeeper2:
-    image: bitnami/zookeeper:3.9
+    image: bitnamilegacy/zookeeper:3.9
     container_name: zookeeper2
     hostname: zookeeper2
     environment:
       ZOO_SERVER_ID: 2
       ZOO_SERVERS: >-
-        server.1=zookeeper1:2888:3888;2181
-        server.2=zookeeper2:2888:3888;2181
-        server.3=zookeeper3:2888:3888;2181
+        zookeeper1:2888:3888,zookeeper2:2888:3888,zookeeper3:2888:3888
       ALLOW_ANONYMOUS_LOGIN: "yes"
     volumes:
       - zookeeper2-data:/bitnami/zookeeper
+    healthcheck:
+      test: ["CMD", "/opt/bitnami/scripts/zookeeper/healthcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     networks:
       - tuki-kafka
 
   zookeeper3:
-    image: bitnami/zookeeper:3.9
+    image: bitnamilegacy/zookeeper:3.9
     container_name: zookeeper3
     hostname: zookeeper3
     environment:
       ZOO_SERVER_ID: 3
       ZOO_SERVERS: >-
-        server.1=zookeeper1:2888:3888;2181
-        server.2=zookeeper2:2888:3888;2181
-        server.3=zookeeper3:2888:3888;2181
+        zookeeper1:2888:3888,zookeeper2:2888:3888,zookeeper3:2888:3888
       ALLOW_ANONYMOUS_LOGIN: "yes"
     volumes:
       - zookeeper3-data:/bitnami/zookeeper
+    healthcheck:
+      test: ["CMD", "/opt/bitnami/scripts/zookeeper/healthcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     networks:
       - tuki-kafka
 
   kafka1:
-    image: bitnami/kafka:3.7
+    image: bitnamilegacy/kafka:3.7
     container_name: kafka1
     hostname: kafka1
     depends_on:
@@ -91,11 +103,17 @@ services:
       - "9092:9092"
     volumes:
       - kafka1-data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
     networks:
       - tuki-kafka
 
   kafka2:
-    image: bitnami/kafka:3.7
+    image: bitnamilegacy/kafka:3.7
     container_name: kafka2
     hostname: kafka2
     depends_on:
@@ -124,11 +142,17 @@ services:
       - "9093:9092"
     volumes:
       - kafka2-data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
     networks:
       - tuki-kafka
 
   kafka3:
-    image: bitnami/kafka:3.7
+    image: bitnamilegacy/kafka:3.7
     container_name: kafka3
     hostname: kafka3
     depends_on:
@@ -157,16 +181,25 @@ services:
       - "9094:9092"
     volumes:
       - kafka3-data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
     networks:
       - tuki-kafka
 
   kafka-init:
-    image: bitnami/kafka:3.7
+    image: bitnamilegacy/kafka:3.7
     container_name: kafka-init
     depends_on:
-      - kafka1
-      - kafka2
-      - kafka3
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
     entrypoint: ["/bin/bash", "/opt/kafka-init.sh"]
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka1:9094,kafka2:9094,kafka3:9094

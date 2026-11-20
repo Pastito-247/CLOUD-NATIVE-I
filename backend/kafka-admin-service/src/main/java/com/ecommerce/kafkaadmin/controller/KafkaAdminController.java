@@ -56,4 +56,9 @@ public class KafkaAdminController {
     public Object listGroups() {
         return service.listGroups();
     }
+
+    @GetMapping("/groups/{groupId}/offsets")
+    public Map<String, Object> getGroupOffsets(@PathVariable String groupId) {
+        return service.getGroupOffsets(groupId);
+    }
 }

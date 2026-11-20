@@ -1,5 +1,8 @@
 package com.ecommerce.orders.service;
 
+import com.ecommerce.orders.client.ProductCatalogClient;
+import com.ecommerce.orders.dto.CreateOrderRequest;
+import com.ecommerce.orders.dto.GuestOrderItemRequest;
 import com.ecommerce.orders.event.OrderCreatedEvent;
 import com.ecommerce.orders.messaging.OrderEventPublisher;
 import com.ecommerce.orders.model.Order;
@@ -9,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +29,9 @@ public class OrderService {
 
     @Autowired
     private com.ecommerce.orders.messaging.kafka.OrderEventPublisher kafkaOrderEventPublisher;
+
+    @Autowired
+    private ProductCatalogClient productCatalogClient;
     
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
@@ -42,9 +49,17 @@ public class OrderService {
         return orderRepository.findByStatus(status);
     }
     
-    public Order createOrder(Order order) {
-        // El estado inicial lo define el backend: un pedido nace PENDING y solo
-        // se confirma cuando el pago se procesa correctamente (receipt.generated).
+    public Order createOrder(CreateOrderRequest request, String userEmail) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (GuestOrderItemRequest item : request.items()) {
+            ProductCatalogClient.ProductInfo product = productCatalogClient.getProduct(item.productId());
+            if (product == null || product.price() == null || product.price().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Producto no disponible: " + item.productId());
+            }
+            total = total.add(product.price().multiply(BigDecimal.valueOf(item.quantity())));
+        }
+
+        Order order = new Order(userEmail, total, request.shippingAddress());
         order.setStatus(Order.STATUS_PENDING);
         Order saved = orderRepository.save(order);
         orderEventPublisher.publishOrderCreated(new OrderCreatedEvent(

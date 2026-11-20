@@ -32,7 +32,11 @@ public class ProductCatalogClient {
                 return null;
             }
             String name = body.path("name").asText("");
-            BigDecimal price = body.path("price").decimalValue();
+            JsonNode priceNode = body.path("price");
+            if (priceNode.isMissingNode() || priceNode.isNull()) {
+                return null;
+            }
+            BigDecimal price = priceNode.decimalValue();
             return new ProductInfo(productId, name, price);
         } catch (Exception ex) {
             log.warn("No se pudo consultar el producto {}: {}", productId, ex.getMessage());

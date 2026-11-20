@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * Productor de eventos del dominio de pagos. Encapsula el envio a RabbitMQ
  * para que la capa de negocio no dependa de la API de mensajeria.
  */
-@Component
+@Component("rabbitPaymentEventPublisher")
 public class PaymentEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentEventPublisher.class);

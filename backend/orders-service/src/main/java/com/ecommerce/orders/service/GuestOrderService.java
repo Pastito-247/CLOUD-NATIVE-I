@@ -56,6 +56,7 @@ public class GuestOrderService {
         order.setShippingAddress(request.shippingAddress());
         order.setStatus(Order.STATUS_PENDING);
         order.setTrackingCode(generateTrackingCode());
+        order.setTotal(BigDecimal.ZERO);
         Order saved = orderRepository.save(order);
 
         BigDecimal total = BigDecimal.ZERO;

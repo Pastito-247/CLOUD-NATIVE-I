@@ -84,7 +84,7 @@ cognito:
 
 # CORS Configuration
 cors:
-  allowed-origins: "http://localhost:4200,https://pastito-247.github.io"
+  allowed-origins: "${CORS_ALLOWED_ORIGINS:http://localhost:4200,https://pastito-247.github.io}"
 
 # ============================================================
 # Configuracion centralizada de mensajeria (RabbitMQ).

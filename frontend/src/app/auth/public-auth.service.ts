@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import {
   AuthenticationDetails,
+  CognitoRefreshToken,
   CognitoUser,
   CognitoUserAttribute,
   CognitoUserPool
@@ -118,7 +119,49 @@ export class PublicAuthService {
     return this.getTokens()?.email || null;
   }
 
+  private isExpired(token?: string): boolean {
+    if (!token) return true;
+    try {
+      const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const claims = JSON.parse(atob(payload));
+      return !claims.exp || Date.now() >= claims.exp * 1000;
+    } catch {
+      return true;
+    }
+  }
+
   isLoggedIn(): boolean {
-    return !!this.getAccessToken();
+    const tokens = this.getTokens();
+    return !!tokens && !this.isExpired(tokens.idToken || tokens.accessToken);
+  }
+
+  refreshSession(): Promise<boolean> {
+    const tokens = this.getTokens();
+    if (!tokens?.refreshToken || !tokens?.email) {
+      return Promise.resolve(false);
+    }
+    const user = new CognitoUser({ Username: tokens.email, Pool: this.userPool });
+    const refreshToken = new CognitoRefreshToken({ RefreshToken: tokens.refreshToken });
+    return new Promise<boolean>((resolve) => {
+      user.refreshSession(refreshToken, (err, refreshed) => {
+        if (err || !refreshed) {
+          this.signOut();
+          resolve(false);
+          return;
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          ...tokens,
+          accessToken: refreshed.getAccessToken().getJwtToken(),
+          idToken: refreshed.getIdToken().getJwtToken(),
+          refreshToken: refreshed.getRefreshToken()?.getToken() || tokens.refreshToken
+        }));
+        resolve(true);
+      });
+    });
+  }
+
+  async getValidIdToken(): Promise<string | null> {
+    if (this.isLoggedIn()) return this.getIdToken();
+    return (await this.refreshSession()) ? this.getIdToken() : null;
   }
 }

@@ -285,10 +285,8 @@ export class AppComponent implements OnInit, OnDestroy {
     const total = this.getCartTotal();
 
     const order = {
-      userEmail: this.userEmail,
-      total: total,
       shippingAddress: this.shippingAddress.trim(),
-      status: 'PENDING'
+      items: items.map(item => ({ productId: item.productId, quantity: item.quantity }))
     };
 
     // 1) Crea el pedido en orders-service (publica order.created -> users).

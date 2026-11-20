@@ -24,14 +24,26 @@ public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    @Value("${kafka.topics.order-events-dlt}")
+    @Value("${kafka.consumer.group.audit:tuki-audit}")
+    private String consumerGroup;
+
+    @Value("${kafka.topics.order-events:tuki.order.events}")
+    private String orderTopic;
+
+    @Value("${kafka.topics.payment-events:tuki.payment.events}")
+    private String paymentTopic;
+
+    @Value("${kafka.topics.order-events-dlt:tuki.order.events.DLT}")
     private String orderDltTopic;
+
+    @Value("${kafka.topics.payment-events-dlt:tuki.payment.events.DLT}")
+    private String paymentDltTopic;
 
     @Bean
     public ConsumerFactory<String, JsonNode> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "tuki-report");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                 org.apache.kafka.common.serialization.StringDeserializer.class);
@@ -54,8 +66,12 @@ public class KafkaConfig {
 
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
                 kafkaTemplate,
-                (record, ex) -> new org.apache.kafka.common.TopicPartition(
-                        record.topic() + ".DLT", record.partition()));
+                (record, ex) -> {
+                    String dltTopic = orderTopic.equals(record.topic()) ? orderDltTopic
+                            : paymentTopic.equals(record.topic()) ? paymentDltTopic
+                            : record.topic() + ".DLT";
+                    return new org.apache.kafka.common.TopicPartition(dltTopic, record.partition());
+                });
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(2000L, 3L));
         factory.setCommonErrorHandler(errorHandler);
         return factory;

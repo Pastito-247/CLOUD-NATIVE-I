@@ -1,12 +1,14 @@
 package com.ecommerce.payments.controller;
 
 import com.ecommerce.payments.model.Receipt;
+import com.ecommerce.payments.security.JwtEmailResolver;
 import com.ecommerce.payments.service.ReceiptService;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -23,19 +25,28 @@ public class ReceiptController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Receipt> getReceipt(@PathVariable Long id) {
-        return ResponseEntity.ok(receiptService.getReceipt(id));
+    public ResponseEntity<Receipt> getReceipt(@PathVariable Long id, Authentication authentication) {
+        Receipt receipt = receiptService.getReceipt(id);
+        JwtEmailResolver.requireOwnerOrAdmin(authentication, receipt.getUserEmail());
+        return ResponseEntity.ok(receipt);
     }
 
     @GetMapping("/payment/{paymentId}")
-    public ResponseEntity<Receipt> getReceiptByPayment(@PathVariable Long paymentId) {
+    public ResponseEntity<Receipt> getReceiptByPayment(@PathVariable Long paymentId,
+                                                       Authentication authentication) {
         return receiptService.getByPaymentId(paymentId)
+                .filter(receipt -> {
+                    JwtEmailResolver.requireOwnerOrAdmin(authentication, receipt.getUserEmail());
+                    return true;
+                })
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}/pdf")
-    public ResponseEntity<Resource> downloadPdf(@PathVariable Long id) {
+    public ResponseEntity<Resource> downloadPdf(@PathVariable Long id, Authentication authentication) {
+        Receipt receipt = receiptService.getReceipt(id);
+        JwtEmailResolver.requireOwnerOrAdmin(authentication, receipt.getUserEmail());
         byte[] pdf = receiptService.loadPdf(id)
                 .orElseThrow(() -> new IllegalStateException("Boleta sin PDF disponible: " + id));
 

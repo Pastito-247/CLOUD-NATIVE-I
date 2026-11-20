@@ -53,7 +53,7 @@ mantener Kafka local para no pagar un EC2 más grande, la defensa se divide así
 | RabbitMQ | 2 nodos en `docker-compose.yml`, fanout de negocio + DLX direct + DLQ, logs de no entregados, admin de colas/exchanges/bindings |
 | Colas actuales | `order.created`, `order.review`, `payment.notification`, `payment.screen`, `receipt.email`, `stock.decrement`, `product.sync`, `category.sync` (cada una con su DLQ) |
 | API Gateway | Instancia HTTP API `3cbwduklgb` en `us-east-1`; rutas privadas responden `401` sin token |
-| Despliegue | Backend en EC2 (`http://184.192.252.196`), frontend en Pages |
+| Despliegue | Backend en EC2 (`http://184.195.234.120`), frontend en Pages |
 | Documentación | README, RABBITMQ_SETUP, EC2_DEPLOYMENT, API_GATEWAY_DEPLOYMENT, guías de demo |
 
 ### 2.2 Brechas frente a la pauta
@@ -721,8 +721,8 @@ Cada fase termina con commit en `entrega-3` y criterio de aceptación verificado
    (registro con actor `guest`).
 4. **Cognito** (2 min): registro público → código de email → login → mostrar
    JWT en DevTools → `/mis-compras`.
-5. **Roles** (1 min): con token Cognito, intentar `/api/orders` y `/api/rabbit`
-   → 403; con token Entra admin → 200.
+5. **Roles** (1 min): con ID token Cognito, intentar `/api/rabbit/queues`
+   → 401 en el authorizer Entra; con token Entra admin → 200.
 6. **API Manager** (1.5 min): mostrar rutas públicas vs. protegidas, authorizers,
    y un `curl` con token inválido → 401.
 7. **RabbitMQ** (1 min): 2 nodos, 3 colas + DLQ, exchanges direct y topic.
@@ -732,11 +732,11 @@ Cada fase termina con commit en `entrega-3` y criterio de aceptación verificado
 ### Checklist pre-demo
 
 - [x] RDS arriba y seed cargado.
-- [x] EC2 arriba (EIP `184.195.234.120`, gateway sin 503).
+- [x] EC2 arriba (EIP `184.195.234.120`, gateway verificado sin `502/503` el `2026-11-19`).
 - [x] Usuario de prueba Cognito confirmado (`cliente@tuki.cl`).
 - [ ] Usuario admin Entra con rol `admin`.
 - [ ] Kafka UI y Rabbit Management abiertos en pestañas.
-- [ ] Frontend apuntando al gateway correcto.
+- [x] Frontend apuntando al gateway correcto.
 - [ ] Plan B: video grabado con el flujo completo.
 
 ---

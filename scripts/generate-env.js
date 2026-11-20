@@ -37,16 +37,35 @@ function loadEnv(filePath) {
   return env;
 }
 
-// --- Detecta valores sin rellenar ---
-function hasPlaceholders(env) {
-  return Object.values(env).some(v => typeof v === 'string' && (v.includes('TU_') || v.toUpperCase().includes('YOUR_')));
+const REQUIRED_ENV_KEYS = [
+  'ENTRA_CLIENT_ID',
+  'ENTRA_TENANT_ID',
+  'ENTRA_AUTHORITY',
+  'ENTRA_API_URI',
+  'ENTRA_API_SCOPE',
+  'FRONTEND_REDIRECT_URI',
+  'PROD_BACKEND_URL',
+  'PROD_REDIRECT_URI',
+  'COGNITO_REGION',
+  'COGNITO_USER_POOL_ID',
+  'COGNITO_CLIENT_ID',
+  'COGNITO_ISSUER'
+];
+
+function invalidValues(env) {
+  return REQUIRED_ENV_KEYS.filter(key => {
+    const value = (env[key] || '').trim();
+    return !value || value.includes('TU_') || value.toUpperCase().includes('YOUR_');
+  });
 }
 
 const env = loadEnv(ENV_FILE);
+const invalid = invalidValues(env);
 
-if (hasPlaceholders(env)) {
-  console.warn('ADVERTENCIA: El archivo .env todavia contiene valores placeholder (TU_CLIENT_ID / TU_TENANT_ID / YOUR_).');
-  console.warn('La autenticacion no funcionara hasta rellenarlos con tu App Registration real.\n');
+if (invalid.length > 0) {
+  console.error(`ERROR: variables incompletas o placeholder en .env: ${invalid.join(', ')}.`);
+  console.error('Rellena los valores reales antes de generar los environments.');
+  process.exit(1);
 }
 
 // --- Escribe environment.ts (desarrollo) ---

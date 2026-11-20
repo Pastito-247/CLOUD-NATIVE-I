@@ -30,7 +30,7 @@
 
 ```powershell
 # RabbitMQ en Docker + los 6 servicios del backend
-ssh -i .\tuki-key.pem ubuntu@184.192.252.196 "docker ps --filter name=rabbitmq --format '{{.Names}} {{.Status}}'; systemctl is-active tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin tuki-payments"
+ssh -i .\tuki-key.pem ubuntu@184.195.234.120 "docker ps --filter name=rabbitmq --format '{{.Names}} {{.Status}}'; systemctl is-active tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin tuki-payments"
 ```
 
 Debe mostrar `rabbitmq Up (healthy)` y `active` seis veces.
@@ -41,7 +41,7 @@ El broker **no corre en tu PC**: corre en Docker dentro del EC2. Para verlo en `
 de puerto local **en una ventana aparte** y déjalo abierto durante toda la demo:
 
 ```powershell
-ssh -i .\tuki-key.pem -N -L 15672:127.0.0.1:15672 ubuntu@184.192.252.196
+ssh -i .\tuki-key.pem -N -L 15672:127.0.0.1:15672 ubuntu@184.195.234.120
 ```
 
 Luego abre:
@@ -62,7 +62,7 @@ Luego abre:
 4. **Terminal de logs** (opcional, pero muy útil):
 
 ```powershell
-ssh -i .\tuki-key.pem ubuntu@184.192.252.196 "sudo journalctl -u tuki-payments -u tuki-orders -u tuki-users -f"
+ssh -i .\tuki-key.pem ubuntu@184.195.234.120 "sudo journalctl -u tuki-payments -u tuki-orders -u tuki-users -f"
 ```
 
 ### 1.4 Datos a mano
@@ -72,7 +72,7 @@ ssh -i .\tuki-key.pem ubuntu@184.192.252.196 "sudo journalctl -u tuki-payments -
 | Frontend | `https://pastito-247.github.io/CLOUD-NATIVE-I/` |
 | Panel RabbitMQ | `http://localhost:15672` (vía túnel SSH) |
 | Credenciales RabbitMQ | `tuki` / `tuki` |
-| EC2 | `184.192.252.196` · usuario `ubuntu` · llave `tuki-key.pem` |
+| EC2 | `184.195.234.120` · usuario `ubuntu` · llave `tuki-key.pem` |
 | Servicios backend | 8081 products · 8082 categories · 8083 users · 8084 orders · 8085 rabbit-admin · 8086 payments |
 | Colas | 18: 9 funcionales + 9 DLQ, todas con 1 consumidor |
 
@@ -306,16 +306,16 @@ Frase:
 
 ```powershell
 # Ver el estado de RabbitMQ y los servicios
-ssh -i .\tuki-key.pem ubuntu@184.192.252.196 "docker ps --filter name=rabbitmq; systemctl is-active tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin tuki-payments"
+ssh -i .\tuki-key.pem ubuntu@184.195.234.120 "docker ps --filter name=rabbitmq; systemctl is-active tuki-products tuki-categories tuki-users tuki-orders tuki-rabbit-admin tuki-payments"
 
 # Ver el panel en localhost
-ssh -i .\tuki-key.pem -N -L 15672:127.0.0.1:15672 ubuntu@184.192.252.196
+ssh -i .\tuki-key.pem -N -L 15672:127.0.0.1:15672 ubuntu@184.195.234.120
 
 # Logs del flujo de pago y pedidos
-ssh -i .\tuki-key.pem ubuntu@184.192.252.196 "sudo journalctl -u tuki-payments -u tuki-orders -u tuki-users -f"
+ssh -i .\tuki-key.pem ubuntu@184.195.234.120 "sudo journalctl -u tuki-payments -u tuki-orders -u tuki-users -f"
 
 # Confirmar que el broker tiene las 18 colas con consumidor
-ssh -i .\tuki-key.pem ubuntu@184.192.252.196 "curl -s -u tuki:tuki http://127.0.0.1:15672/api/queues | jq '[.[] | select(.consumers > 0)] | length'"
+ssh -i .\tuki-key.pem ubuntu@184.195.234.120 "curl -s -u tuki:tuki http://127.0.0.1:15672/api/queues | jq '[.[] | select(.consumers > 0)] | length'"
 ```
 
 ---

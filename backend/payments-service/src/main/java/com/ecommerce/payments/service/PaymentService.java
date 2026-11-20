@@ -1,5 +1,6 @@
 package com.ecommerce.payments.service;
 
+import com.ecommerce.payments.client.ProductCatalogClient;
 import com.ecommerce.payments.dto.OrderItemRequest;
 import com.ecommerce.payments.dto.PaymentRequest;
 import com.ecommerce.payments.event.OrderItemEvent;
@@ -13,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -28,29 +30,38 @@ public class PaymentService {
     private final PaymentEventPublisher publisher;
     private final com.ecommerce.payments.messaging.kafka.PaymentEventPublisher kafkaPublisher;
     private final ObjectMapper objectMapper;
+    private final ProductCatalogClient productCatalogClient;
 
     public PaymentService(PaymentRepository paymentRepository,
                           PaymentEventPublisher publisher,
                           com.ecommerce.payments.messaging.kafka.PaymentEventPublisher kafkaPublisher,
-                          ObjectMapper objectMapper) {
+                          ObjectMapper objectMapper,
+                          ProductCatalogClient productCatalogClient) {
         this.paymentRepository = paymentRepository;
         this.publisher = publisher;
         this.kafkaPublisher = kafkaPublisher;
         this.objectMapper = objectMapper;
+        this.productCatalogClient = productCatalogClient;
     }
 
     /**
      * Registra el pago en estado PROCESSING y publica {@code payment.requested}
      * en el exchange fanout para disparar el flujo asincrono.
      */
-    public Payment createPayment(PaymentRequest request) {
+    public Payment createPayment(PaymentRequest request, String userEmail) {
         List<OrderItemEvent> items = toEvents(request.items());
+        BigDecimal amount = items.stream()
+                .map(item -> item.unitPrice().multiply(BigDecimal.valueOf(item.quantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("No se pudo calcular el importe del pago");
+        }
         String itemsJson = serializeItems(items);
 
         Payment payment = new Payment(
                 request.orderId(),
-                request.userEmail(),
-                request.amount(),
+                userEmail,
+                amount,
                 request.method(),
                 request.shippingAddress(),
                 itemsJson);
@@ -112,13 +123,13 @@ public class PaymentService {
         if (items == null) {
             return List.of();
         }
-        return items.stream()
-                .map(item -> new OrderItemEvent(
-                        item.productId(),
-                        item.productName(),
-                        item.quantity(),
-                        item.unitPrice()))
-                .toList();
+        return items.stream().map(item -> {
+            ProductCatalogClient.ProductInfo product = productCatalogClient.getProduct(item.productId());
+            if (product == null || product.price() == null || product.price().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Producto no disponible: " + item.productId());
+            }
+            return new OrderItemEvent(item.productId(), product.name(), item.quantity(), product.price());
+        }).toList();
     }
 
     private String serializeItems(List<OrderItemEvent> items) {

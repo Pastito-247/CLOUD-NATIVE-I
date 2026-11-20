@@ -12,7 +12,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
-@Component
+@Component("kafkaPaymentEventPublisher")
 public class PaymentEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentEventPublisher.class);

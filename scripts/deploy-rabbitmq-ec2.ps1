@@ -1,10 +1,10 @@
 # ============================================================
-# Despliega RabbitMQ (1 nodo, Docker) en el EC2 del backend y,
+# Despliega RabbitMQ (cluster de 2 nodos, Docker) en el EC2 del backend y,
 # opcionalmente, apunta los 6 servicios systemd a 127.0.0.1.
 #
 # Uso:
-#   .\scripts\deploy-rabbitmq-ec2.ps1 -Ec2Host 184.192.252.196
-#   .\scripts\deploy-rabbitmq-ec2.ps1 -Ec2Host 184.192.252.196 -ApplyBackendConfig
+#   .\scripts\deploy-rabbitmq-ec2.ps1 -Ec2Host 184.195.234.120
+#   .\scripts\deploy-rabbitmq-ec2.ps1 -Ec2Host 184.195.234.120 -ApplyBackendConfig
 #
 # Requisitos:
 #   - Docker + docker compose instalados en el EC2.
@@ -56,11 +56,16 @@ function Invoke-Remote {
 Write-Host "1/4 Verificando Docker en el EC2..." -ForegroundColor Cyan
 Invoke-Remote "command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 || { echo 'ERROR: falta Docker o el plugin compose'; exit 1; }"
 
-Write-Host "2/4 Copiando docker-compose.yml..." -ForegroundColor Cyan
-Invoke-Remote "mkdir -p ~/rabbitmq"
+Write-Host "2/4 Copiando docker-compose.yml y config de cluster..." -ForegroundColor Cyan
+Invoke-Remote "mkdir -p ~/rabbitmq/docker/rabbitmq"
 & scp @sshBase $ComposeFile "${remote}:rabbitmq/docker-compose.yml"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Fallo scp del compose (exit $LASTEXITCODE)."
+    exit $LASTEXITCODE
+}
+& scp @sshBase (Join-Path $root "docker\rabbitmq\rabbitmq.conf") "${remote}:rabbitmq/docker/rabbitmq/rabbitmq.conf"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Fallo scp de rabbitmq.conf (exit $LASTEXITCODE)."
     exit $LASTEXITCODE
 }
 
@@ -68,8 +73,9 @@ Write-Host "3/4 Levantando RabbitMQ..." -ForegroundColor Cyan
 Invoke-Remote "cd ~/rabbitmq && RABBITMQ_USERNAME='$RabbitUser' RABBITMQ_PASSWORD='$RabbitPass' docker compose up -d"
 Invoke-Remote "cd ~/rabbitmq && docker compose ps"
 
-Write-Host "4/4 Verificando Management API..." -ForegroundColor Cyan
+Write-Host "4/4 Verificando Management API y cluster de 2 nodos..." -ForegroundColor Cyan
 Invoke-Remote "for i in 1 2 3 4 5 6 7 8 9 10; do curl -sf -u '${RabbitUser}:${RabbitPass}' http://127.0.0.1:15672/api/overview >/dev/null && { echo 'OK: RabbitMQ responde en 127.0.0.1:5672 / :15672'; exit 0; }; sleep 3; done; echo 'ERROR: RabbitMQ no respondio a tiempo'; exit 1"
+Invoke-Remote 'for i in 1 2 3 4 5 6 7 8 9 10; do status=$(docker exec rabbitmq1 rabbitmqctl cluster_status 2>/dev/null || true); if echo "$status" | grep -q "rabbit@rabbitmq1" && echo "$status" | grep -q "rabbit@rabbitmq2"; then echo "OK: cluster RabbitMQ con 2 nodos"; docker exec rabbitmq1 rabbitmqctl cluster_status; exit 0; fi; sleep 3; done; echo "ERROR: el cluster no tiene 2 nodos"; exit 1'
 
 if ($ApplyBackendConfig) {
     Write-Host "Apuntando los 6 servicios a 127.0.0.1:5672..." -ForegroundColor Cyan

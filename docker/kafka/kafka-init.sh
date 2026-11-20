@@ -8,14 +8,21 @@ RETENTION_MS=604800000
 DLT_RETENTION_MS=2592000000
 
 echo "Esperando a los brokers en $BOOTSTRAP ..."
+BROKERS_READY=false
 for i in $(seq 1 60); do
   if /opt/bitnami/kafka/bin/kafka-broker-api-versions.sh \
       --bootstrap-server "$BOOTSTRAP" >/dev/null 2>&1; then
     echo "Brokers listos."
+    BROKERS_READY=true
     break
   fi
   sleep 2
 done
+
+if [[ "$BROKERS_READY" != "true" ]]; then
+  echo "ERROR: los brokers no respondieron despues de 120s." >&2
+  exit 1
+fi
 
 create_topic () {
   local name="$1"
@@ -38,7 +45,24 @@ create_topic "tuki.payment.events"        "$RETENTION_MS"
 create_topic "tuki.order.events.DLT"      "$DLT_RETENTION_MS"
 create_topic "tuki.payment.events.DLT"    "$DLT_RETENTION_MS"
 
-echo "===== Topicos creados ====="
-/opt/bitnami/kafka/bin/kafka-topics.sh \
+echo "===== Verificando topicos ====="
+TOPICS=$(/opt/bitnami/kafka/bin/kafka-topics.sh \
   --bootstrap-server "$BOOTSTRAP" \
-  --describe
+  --describe)
+
+for name in "tuki.order.events" "tuki.payment.events" \
+            "tuki.order.events.DLT" "tuki.payment.events.DLT"; do
+  escaped="${name//./\\.}"
+  details=$(printf '%s\n' "$TOPICS" | grep -E "^Topic: ${escaped}[[:space:]]" || true)
+  count=$(printf '%s\n' "$details" | sed -n 's/.*PartitionCount: \([0-9][0-9]*\).*/\1/p')
+  if [[ "$count" -ne "$PARTITIONS" ]]; then
+    echo "ERROR: $name tiene $count particiones (esperadas $PARTITIONS)." >&2
+    exit 1
+  fi
+  if ! printf '%s\n' "$details" | grep -q "ReplicationFactor: 3"; then
+    echo "ERROR: $name no tiene réplica en los 3 brokers." >&2
+    exit 1
+  fi
+done
+
+printf '%s\n' "$TOPICS"

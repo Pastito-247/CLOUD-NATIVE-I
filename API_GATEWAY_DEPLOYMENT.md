@@ -370,7 +370,7 @@ Variables opcionales:
 |---|---|---|
 | `API_GATEWAY_ID` | `3cbwduklgb` | API existente |
 | `API_GATEWAY_REGION` / `AWS_REGION` | `us-east-1` | Región |
-| `BACKEND_HOST` | `http://184.192.252.196` | EC2 detrás del gateway |
+| `BACKEND_HOST` | `http://184.195.234.120` | EC2 detrás del gateway |
 | `ENTRA_ISSUER` / `ENTRA_AUTHORITY` | tenant actual | Authorizer `tuki-jwt` |
 | `ENTRA_API_URI` | `api://tuki-tech-api` | Audience Entra |
 | `CORS_ORIGIN` | `https://pastito-247.github.io` | Origen Pages |
@@ -441,13 +441,14 @@ curl -i "$api/api/public/products"
 curl -i "$api/api/public/categories"
 curl -i -X POST "$api/api/public/orders" -H "Content-Type: application/json" -d '{}'
 curl -i "$api/api/orders"
-curl -i -H "Authorization: Bearer $env:COGNITO_ACCESS_TOKEN" "$api/api/customer/orders"
-curl -i -H "Authorization: Bearer $env:COGNITO_ACCESS_TOKEN" "$api/api/rabbit/queues"
+curl -i -H "Authorization: Bearer $env:COGNITO_ID_TOKEN" "$api/api/customer/orders"
+curl -i -H "Authorization: Bearer $env:COGNITO_ID_TOKEN" "$api/api/rabbit/queues"
 ```
 
 Resultados esperados: catálogo público `200`, guest con body inválido `400`,
-`/api/orders` sin token `401`, `/api/customer/orders` con token Cognito `200`,
-y `/api/rabbit/queues` con token Cognito `403` (el backend exige `ROLE_admin`).
+`/api/orders` sin token `401`, `/api/customer/orders` con ID token Cognito `200`,
+y `/api/rabbit/queues` con ID token Cognito `401` (la ruta usa el authorizer
+Entra y el token se rechaza antes de llegar al backend).
 
 ## Notas y costo
 
@@ -510,3 +511,8 @@ Verificación ejecutada:
 | `GET /api/public/categories` | `200` |
 | `GET /api/orders` sin token | `401` |
 | `GET /api/orders` con token inválido | `401` |
+
+Rechequeo `2026-11-19`: hubo `502/503` por crash loop de `tuki-payments` (beans
+duplicados). Tras corregir y redesplegar el JAR: públicas `200`, customer y
+privadas sin token `401`. Las credenciales AWS Academy son temporales; si el
+`curl` vuelve a fallar, renueva la sesión AWS antes de la defensa.

@@ -1,6 +1,10 @@
 package com.ecommerce.kafkaadmin.service;
 
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
@@ -19,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -147,6 +152,11 @@ public class KafkaAdminService {
                         .toList());
                 ConsumerGroupState state = d == null ? null : d.state();
                 item.put("stable", state == ConsumerGroupState.STABLE);
+                List<Map<String, Object>> offsets = offsetsForGroup(client, groupId);
+                item.put("offsets", offsets);
+                item.put("totalLag", offsets.stream()
+                        .mapToLong(o -> (Long) o.get("lag"))
+                        .sum());
                 result.add(item);
             }
             result.sort((a, b) -> String.valueOf(a.get("groupId")).compareTo(String.valueOf(b.get("groupId"))));
@@ -156,6 +166,65 @@ public class KafkaAdminService {
             throw new IllegalStateException("Interrumpido al listar consumer groups", e);
         } catch (ExecutionException e) {
             throw new IllegalStateException("No se pudieron listar consumer groups: " + e.getMessage(), e);
+        }
+    }
+
+    public Map<String, Object> getGroupOffsets(String groupId) {
+        try (AdminClient client = adminClient()) {
+            List<Map<String, Object>> offsets = offsetsForGroup(client, groupId);
+            return Map.of(
+                    "groupId", groupId,
+                    "offsets", offsets,
+                    "totalLag", offsets.stream().mapToLong(o -> (Long) o.get("lag")).sum());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrumpido al consultar offsets", e);
+        } catch (ExecutionException e) {
+            throw new IllegalStateException("No se pudieron consultar los offsets: " + e.getMessage(), e);
+        }
+    }
+
+    private List<Map<String, Object>> offsetsForGroup(AdminClient client, String groupId)
+            throws InterruptedException, ExecutionException {
+        Map<TopicPartition, OffsetAndMetadata> committed = client
+                .listConsumerGroupOffsets(groupId)
+                .partitionsToOffsetAndMetadata()
+                .get();
+        Map<TopicPartition, Long> endOffsets = committed.isEmpty()
+                ? Map.of() : readEndOffsets(committed.keySet());
+
+        List<Map<String, Object>> offsets = new ArrayList<>();
+        for (Map.Entry<TopicPartition, OffsetAndMetadata> entry : committed.entrySet()) {
+            TopicPartition partition = entry.getKey();
+            long current = entry.getValue() == null ? -1 : entry.getValue().offset();
+            Long end = endOffsets.get(partition);
+            long endOffset = end == null ? -1 : end;
+            long lag = current >= 0 && endOffset >= current ? endOffset - current : 0;
+            Map<String, Object> item = new HashMap<>();
+            item.put("topic", partition.topic());
+            item.put("partition", partition.partition());
+            item.put("currentOffset", current);
+            item.put("endOffset", endOffset);
+            item.put("lag", lag);
+            offsets.add(item);
+        }
+        offsets.sort((a, b) -> {
+            int byTopic = String.valueOf(a.get("topic")).compareTo(String.valueOf(b.get("topic")));
+            return byTopic != 0 ? byTopic
+                    : Integer.compare((Integer) a.get("partition"), (Integer) b.get("partition"));
+        });
+        return offsets;
+    }
+
+    private Map<TopicPartition, Long> readEndOffsets(Set<TopicPartition> partitions) {
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "tuki-kafka-lag-" + UUID.randomUUID());
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
+            return consumer.endOffsets(partitions);
         }
     }
 }
