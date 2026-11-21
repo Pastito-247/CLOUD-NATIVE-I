@@ -6,6 +6,7 @@ Proyecto del ramo DESARROLLO CLOUD NATIVE I
 
 - Repositorio: `https://github.com/Pastito-247/CLOUD-NATIVE-I`.
 - Página publicada: `https://pastito-247.github.io/CLOUD-NATIVE-I/`.
+- Diagrama de arquitectura: [ARQUITECTURA.md](./ARQUITECTURA.md).
 - Estado y pendientes: [CHECKLIST_FINAL_EFT.md](./CHECKLIST_FINAL_EFT.md).
 - Material de estudio: [ESTUDIO_EFT.md](./ESTUDIO_EFT.md).
 - Diapositivas y notas: [PRESENTACION_EFT.md](./PRESENTACION_EFT.md).
@@ -153,34 +154,17 @@ Sigue la guía completa en [AZURE_AD_SETUP.md](./AZURE_AD_SETUP.md) para:
 
 ### 2. Frontend
 
-Editar `frontend/src/environments/environment.ts`:
+Los archivos `frontend/src/environments/environment.ts` y
+`environment.prod.ts` son **generados** y están ignorados por Git: no se editan
+a mano. Copia `.env.example` a `.env`, completa los valores y ejecuta:
 
-```typescript
-export const environment = {
-  production: false,
-  apiGatewayUrl: 'https://YOUR_API_GATEWAY_URL.execute-api.region.amazonaws.com/prod',
-  productsUrl: 'http://localhost:8081/api/products',
-  categoriesUrl: 'http://localhost:8082/api/categories',
-  usersUrl: 'http://localhost:8083/api/users',
-  ordersUrl: 'http://localhost:8084/api/orders',
-  
-  msalConfig: {
-    auth: {
-      clientId: 'YOUR_CLIENT_ID',
-      authority: 'https://login.microsoftonline.com/YOUR_TENANT_ID',
-      redirectUri: 'http://localhost:4200',
-      postLogoutRedirectUri: 'http://localhost:4200'
-    },
-    cache: {
-      cacheLocation: 'localStorage',
-      storeAuthStateInCookie: false
-    }
-  },
-  
-  enableAuth: true,
-  scopes: ['api://tuki-tech-api/access_as_user']
-};
+```bash
+npm run generate-env --prefix frontend
 ```
+
+El script valida las variables obligatorias y genera ambos environments. En CI,
+los mismos valores se toman de las Variables del repositorio
+(ver [GITHUB_PAGES_DEPLOYMENT.md](./GITHUB_PAGES_DEPLOYMENT.md)).
 
 ### 3. Backend
 
