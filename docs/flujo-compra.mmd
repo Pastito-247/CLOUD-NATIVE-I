@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor U as Visitante
+    participant P as Pages / Angular
+    participant G as API Gateway
+    participant O as orders-service
+    participant R as RabbitMQ
+    participant K as Kafka
+    participant W as users / products
+    participant RP as report + audit
+    participant D as RDS PostgreSQL
+
+    U->>P: /checkout-invitado con items
+    P->>G: POST /api/public/orders
+    G->>O: sin authorizer (ruta publica)
+    O->>D: orden + items + trackingCode TUKI-XXXXXXXX
+    O->>R: comando notify.order
+    O->>K: ORDER_CREATED
+    K->>RP: KPIs y auditoria (grupos distintos)
+    R->>W: notificacion / descuento de stock
+    O-->>P: 201 + trackingCode
+    U->>P: /seguir-pedido?code=TUKI-XXXXXXXX
+    P->>G: GET /api/public/orders/{code}
+    G->>O: sin authorizer (ruta publica)
+    O->>D: consulta por trackingCode
+    O-->>P: estado de la orden
+
+    Note over O,R: Pago autenticado: POST /api/payments → payment.exchange → boleta PDF → receipt.exchange → correo, revision y stock. fail@demo.cl fuerza la DLQ.

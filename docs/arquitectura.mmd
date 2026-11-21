@@ -1,0 +1,42 @@
+flowchart TB
+    subgraph CLIENTES["Clientes"]
+        V["Visitante<br/>sin token"]
+        C["Cliente publico<br/>Cognito"]
+        A["Admin / Operador<br/>Entra ID"]
+    end
+
+    subgraph IDENTIDAD["Proveedores de identidad"]
+        ENTRA[("Microsoft Entra ID<br/>Authorization Code + PKCE")]
+        COG[("Amazon Cognito<br/>tuki-public-users")]
+    end
+
+    subgraph ENTRADA["Capa de entrada"]
+        PAGES["GitHub Pages<br/>Angular 17 SPA<br/>deploy-pages.yml"]
+        GW["AWS API Gateway - HTTP API<br/>tuki-api · stage $default<br/>CORS · throttling · auto-deploy"]
+    end
+
+    subgraph AWS["AWS · EC2 tuki-backend-ef"]
+        direction TB
+        MS["9 microservicios Spring Boot 3.2 / Java 17<br/>products 8081 · categories 8082 · users 8083 · orders 8084<br/>rabbit-admin 8085 · payments 8086<br/>report 8087 · audit 8088 · kafka-admin 8089"]
+        MQ["RabbitMQ - Docker · 2 nodos<br/>tuki.commands · tuki.catalog.events<br/>tuki.dlx + 4 DLQ · reintentos x-retry-count"]
+        KK["Kafka - Docker<br/>local: 3 ZK + 3 brokers RF3<br/>EC2: 1 ZK + 1 broker RF1<br/>tuki.order.events · tuki.payment.events + *.DLT"]
+    end
+
+    DB[("Amazon RDS PostgreSQL<br/>tuki-postgres<br/>7 bases por dominio")]
+
+    V -->|HTTPS| PAGES
+    C -->|HTTPS| PAGES
+    A -->|HTTPS| PAGES
+    A -.->|"login MSAL"| ENTRA
+    C -.->|"signup / confirm / login"| COG
+    PAGES -->|"HTTPS + CORS"| GW
+    ENTRA -.->|"JWT tuki-jwt"| GW
+    COG -.->|"ID token tuki-cognito"| GW
+
+    GW -->|"/api/public/** sin authorizer"| MS
+    GW -->|"/api/customer/** Cognito"| MS
+    GW -->|"/api/** Entra + rol"| MS
+
+    MS -->|"JPA · SPRING_PROFILES_ACTIVE=prod"| DB
+    MS <-->|"comandos + ACK/NACK + DLQ"| MQ
+    MS <-->|"hechos inmutables + DLT"| KK

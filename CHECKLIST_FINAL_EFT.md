@@ -105,6 +105,8 @@
 - [x] Fallar el build si faltan variables obligatorias en `.env`.
 - [x] Guía de defensa actualizada con repositorio GitHub y demo de la página.
 - [x] Creados `PRESENTACION_EFT.md` y `PREGUNTAS_Y_TERMINOS_EFT.md`.
+- [x] Diagrama de arquitectura versionado en `ARQUITECTURA.md` con fuente
+      editable en `docs/arquitectura.mmd` (vista general + flujo de compra).
 - [x] Generar ZIP limpio con `scripts/create-delivery-archive.ps1`
       (sin `.env`, `.pem`, `target`, `dist` ni `node_modules`).
 - [ ] Hacer `git push` de estos cambios al repositorio y verificar los workflows

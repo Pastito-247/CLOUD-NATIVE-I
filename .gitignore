@@ -52,9 +52,11 @@ ng-serve.log
 # Documentacion Markdown (solo local; se versionan los entregables EFT)
 *.md
 !README.md
+!ARQUITECTURA.md
 !CHECKLIST_FINAL_EFT.md
 !ESTUDIO_EFT.md
 !GUION_PRESENTACION_EFT.md
 !GUIA_DEFENSA_EFT.md
 !PRESENTACION_EFT.md
 !PREGUNTAS_Y_TERMINOS_EFT.md
+!GUIA_EFT_COMPLETA.md
