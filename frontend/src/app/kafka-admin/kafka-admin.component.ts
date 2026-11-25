@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { environment } from '../../environments/environment';
 import { KafkaAdminService } from './kafka-admin.service';
 
 @Component({
@@ -16,6 +17,7 @@ export class KafkaAdminComponent implements OnInit {
   configKey = 'retention.ms';
   configValue = '';
   configResult: any = null;
+  kafkaUiUrl = environment.kafkaUiUrl;
 
   constructor(private kafkaAdmin: KafkaAdminService) {}
 

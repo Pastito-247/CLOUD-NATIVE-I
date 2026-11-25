@@ -64,6 +64,7 @@ services:
       KAFKA_CLUSTERS_0_NAME: tuki-kafka-ec2
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       DYNAMIC_CONFIG_ENABLED: "true"
+      SERVER_SERVLET_CONTEXT_PATH: /kafka-ui
       JAVA_OPTS: "-Xms128m -Xmx256m"
     ports:
       - "8080:8080"

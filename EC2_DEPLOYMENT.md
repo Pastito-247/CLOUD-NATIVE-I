@@ -634,6 +634,7 @@ puerto 80. En el EC2 corre nginx en ese puerto y redirige por prefijo:
 - `/api/reports` → `127.0.0.1:8087`
 - `/api/audit` → `127.0.0.1:8088`
 - `/api/kafka` → `127.0.0.1:8089`
+- `/kafka-ui/` → `127.0.0.1:8080/kafka-ui/` (UI pública)
 
 Verificación:
 
@@ -676,6 +677,13 @@ curl http://127.0.0.1/api/public/products
   `ORDERS_SERVICE_URL=http://127.0.0.1:8084` para verificar la propiedad de la
   orden. Tras cualquier `systemctl restart`, espera ~70 s antes de probar
   `tuki-kafka-admin`; mientras tanto nginx responde `502`.
+
+- **Kafka en EC2**: los 9 units deben tener
+  `KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092`. `tuki-report` y `tuki-audit` además
+  usan `SPRING_PROFILES_ACTIVE=prod` (BD `tuki_reporting` / `tuki_audit`) y grupos
+  `tuki-report-v2` / `tuki-audit-v2` para reprocesar los eventos retenidos tras un
+  reinicio. Los productores son orders y payments; `updateOrder` publica
+  `ORDER_CONFIRMED/SHIPPED/DELIVERED/CANCELLED` cuando cambia el estado.
 
 - **Audience Entra**: el authorizer `tuki-jwt` acepta `api://tuki-tech-api` y
   `66c0f84b-3701-42fb-9189-3f4092cba201` porque el token v2.0 trae el GUID en

@@ -73,6 +73,7 @@ if (invalid.length > 0) {
 // API (útil para probar contra EC2 / API Gateway sin levantar backends locales).
 // Por defecto se mantiene localhost con los puertos de cada servicio.
 const devBackend = (env.DEV_BACKEND_URL || '').trim();
+const devKafkaUi = (env.KAFKA_UI_URL || 'http://localhost:8080').trim();
 
 const envDev = `// Archivo GENERADO por scripts/generate-env.js.
 // NO editar a mano - los valores provienen de .env en la raiz.
@@ -93,6 +94,7 @@ export const environment = {
   reportsUrl: '${devBackend || 'http://localhost:8087'}/api/reports',
   auditUrl: '${devBackend || 'http://localhost:8088'}/api/audit',
   kafkaAdminUrl: '${devBackend || 'http://localhost:8089'}/api/kafka',
+  kafkaUiUrl: '${devKafkaUi}',
   publicOrdersUrl: '${devBackend || 'http://localhost:8084'}/api/public/orders',
   customerOrdersUrl: '${devBackend || 'http://localhost:8084'}/api/customer/orders',
 
@@ -129,6 +131,7 @@ export const environment = {
 // PROD_REDIRECT_URI: URL exacta del frontend publicado. Ej: https://USUARIO.github.io/REPO
 const prodBackend = env.PROD_BACKEND_URL || 'https://YOUR-API-GATEWAY.execute-api.region.amazonaws.com/prod';
 const prodRedirect = env.PROD_REDIRECT_URI || 'https://YOUR-FRONTEND-DOMAIN';
+const prodKafkaUi = (env.KAFKA_UI_URL_PROD || `${env.BACKEND_HOST || 'http://localhost'}/kafka-ui/`).trim();
 
 if (!env.PROD_BACKEND_URL || !env.PROD_REDIRECT_URI) {
   console.warn('ADVERTENCIA: PROD_BACKEND_URL o PROD_REDIRECT_URI no estan definidos en .env.');
@@ -156,6 +159,7 @@ export const environment = {
   reportsUrl: '${prodBackend}/api/reports',
   auditUrl: '${prodBackend}/api/audit',
   kafkaAdminUrl: '${prodBackend}/api/kafka',
+  kafkaUiUrl: '${prodKafkaUi}',
   publicOrdersUrl: '${prodBackend}/api/public/orders',
   customerOrdersUrl: '${prodBackend}/api/customer/orders',
 

@@ -94,11 +94,35 @@ public class OrderService {
     public Order updateOrder(Long id, Order orderDetails) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
-        
+
+        String previousStatus = order.getStatus();
+
         order.setStatus(orderDetails.getStatus());
         order.setShippingAddress(orderDetails.getShippingAddress());
-        
-        return orderRepository.save(order);
+
+        Order saved = orderRepository.save(order);
+        String eventType = statusEventType(saved.getStatus());
+
+        if (eventType != null && !eventType.equals(statusEventType(previousStatus))) {
+            kafkaOrderEventPublisher.publishOrderStatusChanged(
+                    saved.getId(), null, saved.getUserEmail(), false,
+                    saved.getTotal(), saved.getStatus(), eventType);
+        }
+
+        return saved;
+    }
+
+    private String statusEventType(String status) {
+        if (status == null) {
+            return null;
+        }
+        return switch (status) {
+            case Order.STATUS_CONFIRMED -> "ORDER_CONFIRMED";
+            case Order.STATUS_SHIPPED -> "ORDER_SHIPPED";
+            case Order.STATUS_DELIVERED -> "ORDER_DELIVERED";
+            case Order.STATUS_CANCELLED -> "ORDER_CANCELLED";
+            default -> null;
+        };
     }
     
     public void deleteOrder(Long id) {

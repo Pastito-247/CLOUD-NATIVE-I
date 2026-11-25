@@ -115,9 +115,11 @@ Proyecto del ramo DESARROLLO CLOUD NATIVE I
 - Despliegue cloud en `tuki-backend-ef`: `docker-compose.ec2-kafka.yml` levanta un
   modo reducido (1 Zookeeper + 1 broker, RF 1) con
   `docker/kafka/kafka-init-ec2.sh`; crea los mismos 4 tópicos con 3 particiones,
-  `min.insync.replicas=1` y retention de 7/30 días. Los backends de la EC2 usan
-  `KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092`. La UI está en el puerto `8080` de la
-  EC2; para verla sin exponerla: `ssh -L 8080:127.0.0.1:8080 -i <clave> ubuntu@<IP_EC2>`.
+   `min.insync.replicas=1` y retention de 7/30 días. Los backends de la EC2 usan
+   `KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092`. La UI corre en `8080`, pero nginx la
+   publica en `http://184.195.234.120/kafka-ui/` (contexto `/kafka-ui`); el enlace
+   "Abrir Kafka UI" del frontend usa esa URL en producción y `localhost:8080` en local.
+
 
 ## Instalación
 

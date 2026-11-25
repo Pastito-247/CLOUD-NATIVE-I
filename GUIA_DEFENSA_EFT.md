@@ -277,6 +277,12 @@ ajena → `403`; pago propio (orden `6`, pago `1`) → `201`; `/api/audit` sin t
 → `401`. Si aparece `502/503`, espera ~70 s tras reiniciar `tuki-kafka-admin` y
 revisa `systemctl is-active tuki-payments`.
 
+Kafka UI en la nube: `http://184.195.234.120/kafka-ui/` (nginx → contenedor
+`kafka-ui` con `SERVER_SERVLET_CONTEXT_PATH=/kafka-ui`). Para que reportes y
+auditoría muestren datos, los consumidores usan `tuki-report-v2` /
+`tuki-audit-v2` con `auto-offset-reset=earliest` y perfil `prod`; al cambiar el
+estado de una orden desde admin se publica el evento correspondiente.
+
 ## Material de apoyo
 
 - Diapositivas y notas: [PRESENTACION_EFT.md](./PRESENTACION_EFT.md).
