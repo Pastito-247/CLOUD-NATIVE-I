@@ -21,6 +21,7 @@ Material complementario que ya existe en el repo (no lo reemplaza, lo ordena):
 | Frontend publicado | `https://pastito-247.github.io/CLOUD-NATIVE-I/` |
 | API Manager (AWS API Gateway) | `https://3cbwduklgb.execute-api.us-east-1.amazonaws.com` |
 | Backend | EC2 `tuki-backend-ef`, EIP `184.195.234.120` |
+| Kafka UI en EC2 | `http://184.195.234.120/kafka-ui/` (nginx → `127.0.0.1:8080/kafka-ui/`) |
 | Base de datos | RDS PostgreSQL `tuki-postgres` (7 bases) |
 | Usuarios públicos | Cognito User Pool `tuki-public-users` |
 
@@ -68,7 +69,8 @@ docker compose -f docker-compose.full.yml ps
 ```
 
 Pestañas abiertas: repo en GitHub, página publicada, consola AWS (API Gateway y
-Cognito), Kafka UI (`localhost:8080`), RabbitMQ UI (`localhost:15672`) y terminal.
+Cognito), Kafka UI (`http://184.195.234.120/kafka-ui/`; local `http://localhost:8080`),
+RabbitMQ UI (`localhost:15672`) y terminal.
 
 | Tiempo | Bloque | Ítems de la rúbrica que cubre |
 |---|---|---|
@@ -107,7 +109,8 @@ Pages` en verde.
 **Pantalla:** AWS → API Gateway → `tuki-api` → Routes; terminal con `docker compose ps`.
 
 **Acciones:** mostrar el stage `$default`, los dos authorizers, las rutas públicas y
-protegidas; en terminal, 2 nodos RabbitMQ, 3 Zookeeper, 3 brokers y Kafka UI.
+protegidas; en terminal, `docker compose ps` con 2 nodos RabbitMQ, 3 Zookeeper, 3
+brokers localmente (en EC2: 1 ZK + 1 broker) y Kafka UI.
 
 **Di:**
 
@@ -143,27 +146,37 @@ protegidas; en terminal, 2 nodos RabbitMQ, 3 Zookeeper, 3 brokers y Kafka UI.
 
 ## 2:50–3:50 | Kafka: evento, offset, lag, reportes y auditoría
 
-**Pantalla:** Kafka UI → Topics → `tuki.order.events`; después `/admin/reports` y `/admin/audit`.
+**Pantalla:** Kafka UI pública → Topics → `tuki.order.events`; después `/admin/reports` y `/admin/audit`.
 
 **Acciones:**
 
 1. Mostrar `tuki.order.events` y `tuki.payment.events`: **3 particiones, RF 3** local
-   (`min.insync.replicas=2`), y los dos `*.DLT`.
+   (`min.insync.replicas=2`), y los dos `*.DLT`. En EC2 se levanta un modo reducido
+   (1 Zookeeper + 1 broker, RF 1) con los mismos 4 tópicos.
 2. Buscar el evento `ORDER_CREATED` del pedido guest recién creado.
-3. Mostrar en Consumers los grupos `tuki-report` y `tuki-audit` con lag 0.
-4. Abrir `/admin/reports` (KPI actualizado) y `/admin/audit` (actor `guest`).
+3. Mostrar en Consumers los grupos `tuki-report-v2` y `tuki-audit-v2` con lag 0. En
+   producción usan `SPRING_PROFILES_ACTIVE=prod` con `tuki_reporting` / `tuki_audit`;
+   el reinicio con offsets reseteados a `earliest` permitió reprocesar los eventos
+   retenidos.
+4. Abrir `/admin/reports` (KPI actualizado) y `/admin/audit` (actor del evento). La
+   evidencia ya capturada muestra `report_kpi` con `total_orders=1`, `guest_orders=1`
+   y `audit_records` con un `ORDER_CREATED`.
+5. Si preguntan por cambios de estado, explicar que `updateOrder` publica
+   `ORDER_CONFIRMED`, `ORDER_SHIPPED`, `ORDER_DELIVERED` o `ORDER_CANCELLED`.
 
 **Di:**
 
 > "La creación de la orden publica un hecho en el tópico. Reportes y auditoría son
 > consumidores en grupos distintos: los dos leen el mismo hecho sin competir y cada
-> grupo lleva sus propios offsets. La diferencia entre offset actual y final es el
-> lag; en 0 significa que están al día. Si un mensaje defectuoso agota los reintentos,
-> se publica en el DLT con sus metadatos y el flujo principal no se bloquea."
+> grupo lleva sus propios offsets. En la nube usamos los grupos `tuki-report-v2` y
+> `tuki-audit-v2` para reproducir el histórico retenido. La diferencia entre offset
+> actual y final es el lag; en 0 significa que están al día. Si un mensaje defectuoso
+> agota los reintentos, se publica en el DLT con sus metadatos y el flujo principal no
+> se bloquea."
 
 **Cierre:** *"El pedido guest también genera evento: sin tocar la base transaccional, reportes y auditoría se actualizan."*
 
-**Evidencia en código:** `OrderEventPublisher.java:28-43`, `ReportEventConsumer.java:67-113`, `AuditEventConsumer.java:21`.
+**Evidencia en código:** `OrderEventPublisher.java:28-43`, `OrderService.java:94-124`, `ReportEventConsumer.java:67-113`, `AuditEventConsumer.java:21`.
 
 ## 3:50–4:50 | Federación pública con Cognito
 
@@ -222,6 +235,11 @@ curl -i -H "Authorization: Bearer $ENTRA_ADMIN_TOKEN" "$GW/api/orders"       # 2
   `/api/users`, `/api/orders`, `/api/payments`, `/api/receipts`, `/api/rabbit`,
   `/api/kafka`, `/api/reports`, `/api/audit`.
 
+Orígenes CORS: `https://pastito-247.github.io`, `http://localhost:4200`,
+   `http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:4200`,
+   `https://tuki-tech.github.io`, `https://tuki-tech.vercel.app`,
+   `https://tuki-tech.netlify.app`, `https://admin.tuki.cl`, `https://www.tuki.cl`.
+
 **Di:**
 
 > "Dos authorizers conviven porque conviven dos proveedores de identidad. Cada ruta
@@ -230,9 +248,12 @@ curl -i -H "Authorization: Bearer $ENTRA_ADMIN_TOKEN" "$GW/api/orders"       # 2
 > El stage tiene CORS de 10 orígenes, throttling y auto-deploy. Si el gateway deja
 > pasar una petición, el microservicio vuelve a validar: defensa en profundidad.
 > Además, payments consulta orders para confirmar que la orden sea del cliente antes
-> de cobrar."
+> de cobrar. El checkout valida dirección de 5–200 caracteres y tope de 10 unidades
+> por producto antes de llamar al gateway."
 
 **Cierre:** *"La misma puerta distingue visitante, cliente y administrador."*
+
+**Evidencia en código:** `scripts/aws/api-gateway-setup.sh:208-209`, `CustomerPaymentController.java:36-42`, `app.component.ts:277-302`.
 
 ## 6:40–7:50 | RabbitMQ: clúster, colas, DLQ y exchanges
 
@@ -417,6 +438,7 @@ qué productos hay y a cuánto están. Eso sirve para que nadie venda algo que n
 | `ReportEventConsumer.java:67-71` | "El contador está suscrito al cuaderno, en su propio equipo de lectores." |
 | `ReportEventConsumer.java:88-108` | "Según el tipo de nota, suma una venta, un pedido invitado o un pago aprobado." |
 | `AuditEventConsumer.java:21` | "El fiscal guarda quién, qué, cuándo y desde dónde." |
+| `OrderService.java:94-124` | "Si el admin cambia el estado, escribe también la nota de confirmación, envío, entrega o cancelación." |
 
 - **Para el negocio:** "Reportes en tiempo real y trazabilidad sin recargar la base de datos de ventas."
 
@@ -459,7 +481,7 @@ qué productos hay y a cuánto están. Eso sirve para que nadie venda algo que n
 | **Kafka** | Cuaderno de eventos: hechos ya ocurridos para reportes y auditoría | 2 tópicos, 3 particiones, eventos visibles |
 | **Zookeeper** | Coordinador de los brokers Kafka (quién manda, metadata, 3 nodos) | `docker compose ps` con 3 ZK |
 | **Brokers Kafka** | Servidores que guardan y entregan los eventos (3 en local) | Kafka UI → Brokers |
-| **Kafka UI** | Panel para ver tópicos, particiones, mensajes, consumidores y lag | Puerto 8080 |
+| **Kafka UI** | Panel para ver tópicos, particiones, mensajes, consumidores y lag | `http://184.195.234.120/kafka-ui/` (local: puerto 8080) |
 | **RabbitMQ** | Buzón de comandos asíncronos: avisos que alguien debe ejecutar | 2 nodos, colas y exchanges en el panel |
 | **DLQ / DLX** | Bandeja de avisos fallidos de RabbitMQ + log | Logs `[EFT-RETRY]`, `[EFT-DLQ]` |
 | **DLT** | Versión Kafka de la bandeja de fallos: tópico `*.DLT` con metadata | `tuki.order.events.DLT` en Kafka UI |
@@ -523,9 +545,10 @@ qué productos hay y a cuánto están. Eso sirve para que nadie venda algo que n
 ### Kafka (+ Zookeeper, brokers, UI)
 
 > "Kafka es el cuaderno de actas: eventos inmutables que varios lectores consultan.
-> Zookeeper coordina los 3 brokers; los tópicos tienen 3 particiones para paralelismo
-> y 3 réplicas para tolerancia a fallos. Kafka UI permite ver particiones, mensajes,
-> offsets y lag. Si un consumidor falla, el evento va al DLT."
+> En local Zookeeper coordina los 3 brokers; en EC2 usamos 1 broker/RF 1 por IAM.
+> Los tópicos tienen 3 particiones para paralelismo. La Kafka UI pública
+> (`http://184.195.234.120/kafka-ui/`) permite ver particiones, mensajes, offsets y
+> lag. Si un consumidor falla, el evento va al DLT."
 
 ### RabbitMQ (+ DLQ)
 
@@ -600,7 +623,7 @@ entrega"*. No inventes.
 | 9 | 3 colas con su DLQ | 6% + 6% | 6:40 / 7:50 |
 | 10 | Exchanges direct + topic | 5% | 6:40 |
 | 11 | 2 tópicos Kafka con 3 particiones y 3 réplicas | 9% | 2:50 |
-| 12 | Kafka UI administrando brokers y tópicos | 6% | 2:50 |
+| 12 | Kafka UI administrando brokers y tópicos (`/kafka-ui/`) | 6% | 2:50 |
 | 13 | Federación pública Cognito: registro + confirmación + login | a confirmar en AVA | 3:50 |
 | 14 | Transacción pública sin token + bloqueo de protegidas | a confirmar en AVA | 1:30 / 4:50 |
 
@@ -668,6 +691,8 @@ entrega"*. No inventes.
 ### Kafka
 
 28. **¿Productor y consumidor?** Orders y payments producen; report y audit consumen.
+    `updateOrder` también publica `ORDER_CONFIRMED/SHIPPED/DELIVERED/CANCELLED` al
+    cambiar el estado de una orden.
 29. **¿Tópico y partición?** Tópico = canal lógico; partición = trozo ordenado del log que permite paralelismo.
 30. **¿Por qué la clave?** Para que un mismo pedido siempre caiga en la misma partición y conserve su orden (`OrderEventPublisher.java:43`).
 31. **¿Offset y lag?** Offset = posición leída; lag = mensajes pendientes. Lag 0 = al día.
@@ -681,7 +706,8 @@ entrega"*. No inventes.
 
 37. **¿Dónde corre el backend?** EC2 `tuki-backend-ef`, servicios systemd, EIP fija.
 38. **¿Qué base usas en producción?** RDS PostgreSQL; H2 solo en desarrollo.
-39. **¿Cuántas bases?** 7, una por dominio.
+39. **¿Cuántas bases?** 7, una por dominio. En prod, reportes usa
+    `tuki_reporting` y auditoría `tuki_audit`.
 40. **¿Qué es un seed idempotente?** Datos iniciales que se insertan solo si no existen; reiniciar no duplica.
 41. **¿Cómo reproduzco la demo?** `docker compose -f docker-compose.full.yml up -d` y seguir el README.
 
@@ -710,8 +736,9 @@ entrega"*. No inventes.
 
 ## 2 minutos antes de grabar
 
-- [ ] `git push` hecho; commit visible en GitHub.
+- [ ] Push de los commits finales hecho; guía incluida visible en GitHub.
 - [ ] Workflows `Backend CI` y `Deploy Frontend to GitHub Pages` en verde.
+- [ ] Kafka UI pública `200`; grupos `tuki-report-v2` / `tuki-audit-v2` con lag 0.
 - [ ] Pestañas cargadas: repo, Pages, API Gateway, Cognito, Kafka UI, RabbitMQ UI.
 - [ ] `curl` de Pages `200`, público `200`, privado sin token `401`.
 - [ ] Un `trackingCode` de prueba anotado.
@@ -724,6 +751,7 @@ entrega"*. No inventes.
 curl -s -o /dev/null -w '%{http_code}\n' https://pastito-247.github.io/CLOUD-NATIVE-I/                                  # 200
 curl -s -o /dev/null -w '%{http_code}\n' https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/public/products   # 200
 curl -s -o /dev/null -w '%{http_code}\n' https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/orders            # 401
+curl -s -o /dev/null -w '%{http_code}\n' http://184.195.234.120/kafka-ui/                                            # 200
 ```
 
 ## Plan B si falla AWS, Docker o la red
@@ -734,6 +762,9 @@ curl -s -o /dev/null -w '%{http_code}\n' https://3cbwduklgb.execute-api.us-east-
 4. Si aparece `502/503`, revisar `systemctl is-active tuki-payments`.
 5. Si Cognito no responde, mostrar el fragmento de `SecurityConfig.java:166-175` donde
    se fuerza `ROLE_customer`.
+6. Si Kafka UI queda en "Cargando", verificar en EC2 que `docker compose -f
+   ~/kafka/docker-compose.yml ps` tenga `kafka` en `healthy` y que `/kafka-ui/`
+   responda `200`; luego revisar los grupos `tuki-report-v2` / `tuki-audit-v2`.
 
 ## Índice rápido de archivos para ir directo
 
@@ -753,3 +784,8 @@ curl -s -o /dev/null -w '%{http_code}\n' https://3cbwduklgb.execute-api.us-east-
 | Registro/login público | `frontend/src/app/auth/public-auth.service.ts:31-160` |
 | Login interno | `frontend/src/app/app.module.ts:46-93` |
 | Rutas del frontend | `frontend/src/app/app-routing.module.ts:20-74` |
+| Link público de Kafka UI | `frontend/src/app/kafka-admin/kafka-admin.component.ts:20` |
+| Generación de `kafkaUiUrl` | `scripts/generate-env.js:97,162` |
+| Validación del checkout | `frontend/src/app/app.component.ts:277-302` |
+| Pago del cliente sin IDOR | `backend/payments-service/.../controller/CustomerPaymentController.java:36-42` |
+| Eventos por cambio de estado | `backend/orders-service/.../service/OrderService.java:94-124` |
