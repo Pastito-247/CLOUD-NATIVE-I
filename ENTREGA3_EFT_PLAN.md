@@ -380,6 +380,7 @@ Migrar datos existentes no aplica (H2 en memoria); con RDS se parte limpio.
 | GET | `/api/customer/orders` | Cognito `customer` | Mis pedidos |
 | GET | `/api/customer/orders/{id}` | Cognito `customer` | Detalle propio (ownership) |
 | POST | `/api/customer/orders` | Cognito `customer` | Crear pedido autenticado |
+| POST | `/api/customer/payments` | Cognito `customer` | Pagar orden propia (ownership) |
 | GET | `/api/customer/receipts/{orderId}` | Cognito `customer` | Boleta propia |
 
 `POST /api/public/orders` body:
@@ -443,6 +444,7 @@ Instancia existente: `3cbwduklgb` (`us-east-1`).
 | POST | `/api/public/orders` | orders 8084 | — |
 | GET | `/api/public/orders/{proxy+}` | orders 8084 | — |
 | ANY | `/api/customer/orders`, `.../{proxy+}` | orders 8084 | `tuki-cognito` |
+| ANY | `/api/customer/payments`, `.../{proxy+}` | payments 8086 | `tuki-cognito` |
 | ANY | `/api/public/*` OPTIONS | — | — |
 | ANY | `/api/products`, `/api/categories`, `/api/users`, `/api/orders`, `/api/rabbit`, `/api/payments`, `/api/receipts` (+ `{proxy+}`) | servicios | `tuki-jwt` |
 | ANY | `/api/customer/*` OPTIONS | — | — |

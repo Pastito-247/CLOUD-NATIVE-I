@@ -181,10 +181,11 @@ curl -H "Authorization: Bearer invalido" .../api/orders  # 401
 ```
 
 **Notas:**
-> "El gateway tiene rutas públicas sin authorizer, `/api/customer/orders` con
-> `tuki-cognito` y el resto con `tuki-jwt` de Entra. Aplica CORS para el origen de
-> Pages, throttling y auto-deploy del stage `$default`. Un token inválido muere
-> aquí; y si pasa, el microservicio vuelve a validar issuer, audience y roles."
+> "El gateway tiene rutas públicas sin authorizer, `/api/customer/orders` y
+> `/api/customer/payments` con `tuki-cognito` y el resto con `tuki-jwt` de Entra.
+> Aplica CORS para 10 orígenes (incluido Pages), throttling y auto-deploy del
+> stage `$default`. Un token inválido muere aquí; y si pasa, el microservicio
+> vuelve a validar issuer, audience y roles."
 
 **Puente:** “El backend además conversa de forma asíncrona.”
 

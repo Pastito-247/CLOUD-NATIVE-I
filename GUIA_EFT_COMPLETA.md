@@ -217,7 +217,7 @@ curl -i -H "Authorization: Bearer $ENTRA_ADMIN_TOKEN" "$GW/api/orders"       # 2
 
 - Públicas sin authorizer: `/api/public/products`, `/api/public/categories`,
   `/api/public/orders`, `/api/public/users`.
-- Cliente con `tuki-cognito`: `/api/customer/orders`.
+- Cliente con `tuki-cognito`: `/api/customer/orders` y `/api/customer/payments`.
 - Protegidas con `tuki-jwt` (Entra): `/api/products`, `/api/categories`,
   `/api/users`, `/api/orders`, `/api/payments`, `/api/receipts`, `/api/rabbit`,
   `/api/kafka`, `/api/reports`, `/api/audit`.
@@ -225,9 +225,12 @@ curl -i -H "Authorization: Bearer $ENTRA_ADMIN_TOKEN" "$GW/api/orders"       # 2
 **Di:**
 
 > "Dos authorizers conviven porque conviven dos proveedores de identidad. Cada ruta
-> declara cuál debe validar su JWT. El stage tiene CORS, throttling y auto-deploy.
-> Si el gateway deja pasar una petición, el microservicio vuelve a validar: defensa
-> en profundidad."
+> declara cuál debe validar su JWT: Entra acepta `api://tuki-tech-api` y el GUID
+> del client ID; Cognito acepta el ID token del cliente `a00kh0fv055nqc8mqqmge24p7`.
+> El stage tiene CORS de 10 orígenes, throttling y auto-deploy. Si el gateway deja
+> pasar una petición, el microservicio vuelve a validar: defensa en profundidad.
+> Además, payments consulta orders para confirmar que la orden sea del cliente antes
+> de cobrar."
 
 **Cierre:** *"La misma puerta distingue visitante, cliente y administrador."*
 

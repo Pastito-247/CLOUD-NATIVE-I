@@ -53,9 +53,9 @@ Proyecto del ramo DESARROLLO CLOUD NATIVE I
 ### Infraestructura AWS
 - **API Gateway** (`tuki-api`, stage `$default`):
   - Públicas: `/api/public/products/**`, `/api/public/categories/**`, `/api/public/orders/**`, `/api/public/users/**` y `OPTIONS` de todas las rutas.
-  - Cliente Cognito: `/api/customer/orders/**` (authorizer JWT `tuki-cognito`).
+  - Cliente Cognito: `/api/customer/orders/**` y `/api/customer/payments/**` (authorizer JWT `tuki-cognito`).
   - Protegidas Entra ID: `/api/products/**`, `/api/categories/**`, `/api/users/**`, `/api/orders/**`, `/api/payments/**`, `/api/receipts/**`, `/api/rabbit/**`, `/api/kafka/**`, `/api/reports/**`, `/api/audit/**` (authorizer JWT `tuki-jwt`).
-  - CORS para `http://localhost:4200` y `https://pastito-247.github.io`, throttling y auto-deploy.
+  - CORS con 10 orígenes (incluye `http://localhost:4200` y `https://pastito-247.github.io`), throttling y auto-deploy.
 - **EC2**: backend systemd + RabbitMQ en Docker (cluster de 2 nodos en `docker-compose.ec2.yml`).
 - **RDS**: PostgreSQL `tuki-postgres`, una base por microservicio JPA.
 - **Cognito**: User Pool `tuki-public-users` para registro/login público; Entra ID para Admin/Operador.

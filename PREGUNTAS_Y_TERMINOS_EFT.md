@@ -60,7 +60,8 @@ Preguntas típicas:
 > "Cognito es el IDaaS de los clientes públicos. El usuario se registra en el User
 > Pool `tuki-public-users`, confirma su email con un código y hace login. Cognito
 > devuelve un ID token, un access token y un refresh token. El frontend guarda la
-> sesión y envía el **ID token** como Bearer a `/api/customer/orders`. El authorizer
+> sesión y envía el **ID token** como Bearer a `/api/customer/orders` y
+> `/api/customer/payments`. El authorizer
 > `tuki-cognito` del gateway verifica firma, issuer y audience; después el backend
 > valida otra vez y mapea el token siempre a `ROLE_customer`. El refresh token
 > renueva la sesión y el logout la descarta."

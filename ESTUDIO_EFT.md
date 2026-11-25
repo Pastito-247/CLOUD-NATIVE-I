@@ -47,7 +47,7 @@ Rutas:
 
 - Públicas (sin JWT): `/api/public/products/**`, `/api/public/categories/**`,
   `/api/public/orders/**`, `/api/public/users/**`.
-- Cliente (JWT Cognito): `/api/customer/orders/**`.
+- Cliente (JWT Cognito): `/api/customer/orders/**`, `/api/customer/payments/**`.
 - Protegidas (JWT Entra + rol): `/api/products/**`, `/api/categories/**`,
   `/api/users/**`, `/api/orders/**`, `/api/payments/**`, `/api/receipts/**`,
   `/api/rabbit/**`, `/api/kafka/**`, `/api/reports/**`, `/api/audit/**`.
@@ -104,8 +104,9 @@ mensajes pendientes; **retention** = tiempo que el mensaje permanece.
   `DB_NAME`, `DB_USER`, `DB_PASSWORD`) para los 7 servicios JPA. Entidades,
   repositorios y CRUD por dominio.
 - RDS `tuki-postgres` Verificada en AWS.
-- API Gateway `tuki-api` en stage `$default`, con dos authorizers JWT, CORS y
-  auto-deploy. Verificados: públicas `200`, customer/privadas sin token `401`.
+- API Gateway `tuki-api` en stage `$default`, con dos authorizers JWT, CORS de
+  10 orígenes y auto-deploy. Verificados: públicas `200`, customer con Cognito
+  `200`, customer/privadas sin token `401`, pago con orden ajena `403`.
 - Frontend en GitHub Pages `https://pastito-247.github.io/CLOUD-NATIVE-I/` (200).
 - Backend en EC2 vía systemd; RabbitMQ en Docker en el mismo EC2.
 - Kafka se demuestra con Docker Compose local (3 ZK + 3 brokers, RF 3) y también

@@ -61,6 +61,10 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.cartItems.length === 0;
   }
 
+  get isCustomerSession(): boolean {
+    return this.isPublicLoggedIn;
+  }
+
   private readonly destroying$ = new Subject<void>();
 
   constructor(
@@ -127,6 +131,10 @@ export class AppComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         this.checkLoginStatus();
       });
+
+    this.publicAuth.session$
+      .pipe(takeUntil(this.destroying$))
+      .subscribe(() => this.checkLoginStatus());
 
     // Escuchar cambios del carrito
     this.cartService.items$
@@ -257,8 +265,9 @@ export class AppComponent implements OnInit, OnDestroy {
   checkout(): void {
     this.clearCartMessage();
 
-    if (!this.isLoggedIn) {
-      this.login();
+    if (!this.isLoggedIn && !this.isCustomerSession) {
+      this.cartOpen = false;
+      this.router.navigate(['/publico']);
       return;
     }
 
@@ -276,6 +285,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.checkoutLoading = true;
 
+    const customerSession = this.isCustomerSession;
+
     const items = this.cartService.getItems().map(item => ({
       productId: item.product.id,
       productName: item.product.name,
@@ -289,12 +300,13 @@ export class AppComponent implements OnInit, OnDestroy {
       items: items.map(item => ({ productId: item.productId, quantity: item.quantity }))
     };
 
-    // 1) Crea el pedido en orders-service (publica order.created -> users).
-    this.http.post<any>(environment.ordersUrl, order).subscribe({
+    const orderUrl = customerSession
+      ? environment.customerOrdersUrl
+      : environment.ordersUrl;
+
+    this.http.post<any>(orderUrl, order).subscribe({
       next: (createdOrder) => {
-        // 2) Registra el pago en payments-service (dispara el flujo asincrono
-        //    payment.requested -> notificacion + simulacion/boleta).
-        this.payOrder(createdOrder?.id, total, items);
+        this.payOrder(createdOrder?.id, total, items, customerSession);
       },
       error: (error) => {
         console.error('Error creating order:', error);
@@ -305,17 +317,23 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
-  private payOrder(orderId: number, total: number, items: any[]): void {
+  private payOrder(orderId: number, total: number, items: any[], customerSession: boolean): void {
     const payment = {
       orderId: orderId,
-      userEmail: this.userEmail,
+      userEmail: customerSession
+        ? (this.publicAuth.getEmail() || this.publicEmail)
+        : this.userEmail,
       amount: total,
       method: this.paymentMethod,
       shippingAddress: this.shippingAddress.trim(),
       items: items
     };
 
-    this.http.post(environment.paymentsUrl, payment).subscribe({
+    const paymentsUrl = customerSession
+      ? environment.customerPaymentsUrl
+      : environment.paymentsUrl;
+
+    this.http.post(paymentsUrl, payment).subscribe({
       next: () => {
         this.cartService.clearCart();
         this.shippingAddress = '';

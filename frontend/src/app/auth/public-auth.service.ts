@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 import {
   AuthenticationDetails,
   CognitoRefreshToken,
@@ -18,6 +19,13 @@ const STORAGE_KEY = 'tuki_cognito_session';
 @Injectable({ providedIn: 'root' })
 export class PublicAuthService {
   private userPool = new CognitoUserPool(POOL_DATA);
+  private readonly sessionSubject = new BehaviorSubject<boolean>(this.isLoggedIn());
+
+  readonly session$ = this.sessionSubject.asObservable();
+
+  private notifySessionChanged(): void {
+    this.sessionSubject.next(this.isLoggedIn());
+  }
 
   isConfigured(): boolean {
     return !!POOL_DATA.UserPoolId && !!POOL_DATA.ClientId
@@ -60,6 +68,7 @@ export class PublicAuthService {
             email: session.getIdToken().payload['email'] || email
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
+          this.notifySessionChanged();
           resolve(tokens);
         },
         onFailure: (err) => reject(err),
@@ -95,6 +104,7 @@ export class PublicAuthService {
       user.signOut();
     }
     localStorage.removeItem(STORAGE_KEY);
+    this.notifySessionChanged();
   }
 
   getTokens(): any | null {
@@ -155,6 +165,7 @@ export class PublicAuthService {
           idToken: refreshed.getIdToken().getJwtToken(),
           refreshToken: refreshed.getRefreshToken()?.getToken() || tokens.refreshToken
         }));
+        this.notifySessionChanged();
         resolve(true);
       });
     });

@@ -36,8 +36,9 @@ prueba anotado.
 
 **Acciones:**
 1. Mostrar la instancia `tuki-api`, stage `$default`, auto-deploy.
-2. Filtrar rutas: `/api/public/**` sin autorizador, `/api/customer/orders` con
-   `tuki-cognito`, `/api/orders` y `/api/kafka` con `tuki-jwt`.
+2. Filtrar rutas: `/api/public/**` sin autorizador, `/api/customer/orders` y
+   `/api/customer/payments` con `tuki-cognito`, `/api/orders` y `/api/kafka`
+   con `tuki-jwt`.
 3. Mostrar authorizers: issuer de Entra y de Cognito.
 4. Terminal: `docker compose -f docker-compose.full.yml ps` (2 RabbitMQ, 3 ZK,
    3 brokers, Kafka UI, servicios).

@@ -13,8 +13,9 @@
 - [x] Cognito multi-issuer sin escalada a `ROLE_admin`.
 - [x] Registro local público desactivado (`410 Gone`).
 - [x] Compra guest con `trackingCode`, ítems y precios calculados en servidor.
-- [x] Endpoints `/api/public/orders` y `/api/customer/orders`.
-- [x] API Gateway idempotente con authorizers Entra/Cognito, CORS y throttling.
+- [x] Endpoints `/api/public/orders`, `/api/customer/orders` y `/api/customer/payments`.
+- [x] API Gateway idempotente con authorizers Entra/Cognito, CORS de 10 orígenes y throttling.
+- [x] Payments valida propiedad de la orden con orders antes de cobrar (orden ajena → `403`).
 - [x] RabbitMQ: `tuki.commands`, `tuki.catalog.events`, `tuki.dlx` y 4 DLQs.
 - [x] Reintentos con `x-retry-count` y logs `[EFT-RETRY]` / `[EFT-DLQ]`.
 - [x] PostgreSQL en perfil `prod` para 5 servicios JPA.
@@ -92,6 +93,8 @@
   (`tuki-payments` en crash loop por beans duplicados). Rechequeo final:
   públicas `200`, customer/privadas sin token `401`.
 - [x] Validar en Pages: login Cognito y ID token en `/api/customer/orders` → `200`.
+- [x] Rechequeo `2026-11-25`: CORS 10 orígenes, preflight Kafka `200`, pago propio
+  (orden `6`, pago `1`) `201`, pago con orden ajena `403`.
 - [x] Corregir guardado inicial de `orders` con `total=0` y permitir `/error` en
   `SecurityConfig`; compra guest `201` y consulta por `trackingCode` `200`.
 - [x] Validar en Pages: compra guest y consulta por `trackingCode`

@@ -628,6 +628,7 @@ puerto 80. En el EC2 corre nginx en ese puerto y redirige por prefijo:
 - `/api/public/categories` → `127.0.0.1:8082`
 - `/api/public/users` → `127.0.0.1:8083`
 - `/api/public/orders` y `/api/customer/orders` → `127.0.0.1:8084`
+- `/api/customer/payments` → `127.0.0.1:8086`
 - `/api/rabbit` → `127.0.0.1:8085`
 - `/api/payments` y `/api/receipts` → `127.0.0.1:8086`
 - `/api/reports` → `127.0.0.1:8087`
@@ -661,11 +662,24 @@ curl http://127.0.0.1/api/public/products
   `journalctl -u tuki-payments -n 100`. El volumen `rabbitmq-data` conserva colas y
   mensajes entre reinicios del contenedor.
 
-- **CORS**: si publicas el frontend en GitHub Pages, agrega tu URL
-  (ej: `https://pastito-247.github.io`) en `CORS_ALLOWED_ORIGINS` de los 6 units
-  (separada por coma) y `systemctl restart` cada servicio. Ya se quitaron los
-  `@CrossOrigin("*")` de los controllers: todo el CORS sale del `SecurityConfig`
-  (`cors.allowed-origins` / `CORS_ALLOWED_ORIGINS`).
+- **CORS**: los 9 units tienen un drop-in
+  `/etc/systemd/system/tuki-<servicio>.service.d/override-cors.conf` con 10
+  orígenes (Pages, localhost y dominios de prueba). El gateway aplica la misma
+  lista en `AllowOrigins`. Ya se quitaron los `@CrossOrigin("*")`: todo sale del
+  `SecurityConfig` (`cors.allowed-origins` / `CORS_ALLOWED_ORIGINS`). Verifica:
+  `curl -X OPTIONS -H 'Origin: https://pastito-247.github.io' -H
+  'Access-Control-Request-Method: GET' https://3cbwduklgb.execute-api.us-east-1.amazonaws.com/api/kafka/topics`
+  → `200`.
+
+- **Cognito en backend**: `tuki-orders` y `tuki-payments` tienen drop-ins con
+  `COGNITO_ISSUER` y `COGNITO_CLIENT_ID`; payments además usa
+  `ORDERS_SERVICE_URL=http://127.0.0.1:8084` para verificar la propiedad de la
+  orden. Tras cualquier `systemctl restart`, espera ~70 s antes de probar
+  `tuki-kafka-admin`; mientras tanto nginx responde `502`.
+
+- **Audience Entra**: el authorizer `tuki-jwt` acepta `api://tuki-tech-api` y
+  `66c0f84b-3701-42fb-9189-3f4092cba201` porque el token v2.0 trae el GUID en
+  `aud`. `tuki-cognito` acepta `a00kh0fv055nqc8mqqmge24p7`.
 
 - **Costos**: `t3.micro` no entra en free tier (≈ US$0.0095/hora). `t2.micro`
   sí es free tier (12 meses), pero usa menos RAM.

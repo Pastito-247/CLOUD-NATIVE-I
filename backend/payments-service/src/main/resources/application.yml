@@ -137,6 +137,9 @@ kafka:
 products:
   service:
     url: ${PRODUCTS_SERVICE_URL:http://localhost:8081}
+orders:
+  service:
+    url: ${ORDERS_SERVICE_URL:http://localhost:8084}
 
 # Logging
 logging:

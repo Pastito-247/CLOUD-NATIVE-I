@@ -5,11 +5,14 @@ REGION="${API_GATEWAY_REGION:-${AWS_REGION:-us-east-1}}"
 API_ID="${API_GATEWAY_ID:-3cbwduklgb}"
 BACKEND_HOST="${BACKEND_HOST:-http://184.195.234.120}"
 STAGE_NAME='$default'
+ENTRA_CLIENT_ID="${ENTRA_CLIENT_ID:-66c0f84b-3701-42fb-9189-3f4092cba201}"
 ENTRA_ISSUER="${ENTRA_ISSUER:-${ENTRA_AUTHORITY:-https://login.microsoftonline.com/e3e92dfe-ea59-4c42-a539-90e6fea570b6/v2.0}}"
-ENTRA_AUDIENCE="${ENTRA_API_URI:-api://tuki-tech-api}"
+ENTRA_API_URI="${ENTRA_API_URI:-api://tuki-tech-api}"
+ENTRA_AUDIENCE="${ENTRA_AUDIENCE:-${ENTRA_API_URI},${ENTRA_CLIENT_ID}}"
 COGNITO_ISSUER="${COGNITO_ISSUER:-}"
 COGNITO_CLIENT_ID="${COGNITO_CLIENT_ID:-}"
 CORS_ORIGIN="${CORS_ORIGIN:-https://pastito-247.github.io}"
+CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-$CORS_ORIGIN,http://localhost:4200,http://localhost:3000,http://localhost:5173,http://127.0.0.1:4200,https://tuki-tech.github.io,https://tuki-tech.vercel.app,https://tuki-tech.netlify.app,https://admin.tuki.cl,https://www.tuki.cl}"
 
 if [[ -z "$COGNITO_ISSUER" || -z "$COGNITO_CLIENT_ID" ]]; then
   echo "Faltan COGNITO_ISSUER o COGNITO_CLIENT_ID. Copialos de .env." >&2
@@ -19,6 +22,30 @@ fi
 aws2() {
   aws apigatewayv2 "$@" --region "$REGION"
 }
+
+to_json_array() {
+  local csv="$1"
+  local out="["
+  local first=1
+  local item
+  local -a items=()
+
+  IFS=',' read -ra items <<< "$csv"
+  for item in "${items[@]}"; do
+    item="${item#"${item%%[![:space:]]*}"}"
+    item="${item%"${item##*[![:space:]]}"}"
+    [[ -z "$item" ]] && continue
+    item="${item//\\/\\\\}"
+    item="${item//\"/\\\"}"
+    if [[ "$first" -eq 0 ]]; then out+=","; fi
+    first=0
+    out+="\"$item\""
+  done
+  out+="]"
+  printf '%s' "$out"
+}
+
+CORS_ORIGINS_JSON=$(to_json_array "$CORS_ALLOWED_ORIGINS")
 
 aws sts get-caller-identity --region "$REGION" >/dev/null
 aws2 get-api --api-id "$API_ID" >/dev/null
@@ -32,10 +59,14 @@ upsert_authorizer() {
   local audience="$3"
   local id
   local jwt_config
+  local audiences_json
 
   id=$(aws2 get-authorizers --api-id "$API_ID" \
     --query "Items[?Name=='$name'].AuthorizerId" --output text 2>/dev/null | head -n 1 || true)
-  jwt_config="{\"Issuer\":\"$issuer\",\"Audience\":[\"$audience\"]}"
+  audiences_json=$(to_json_array "$audience")
+  issuer="${issuer//\\/\\\\}"
+  issuer="${issuer//\"/\\\"}"
+  jwt_config="{\"Issuer\":\"$issuer\",\"Audience\":$audiences_json}"
 
   if [[ -z "$id" || "$id" == "None" ]]; then
     id=$(aws2 create-authorizer \
@@ -166,6 +197,7 @@ add_resource /api/public/categories NONE
 add_resource /api/public/users NONE
 add_resource /api/public/orders NONE
 add_resource /api/customer/orders JWT "$COGNITO_AUTH_ID"
+add_resource /api/customer/payments JWT "$COGNITO_AUTH_ID"
 add_resource /api/products JWT "$ENTRA_AUTH_ID"
 add_resource /api/categories JWT "$ENTRA_AUTH_ID"
 add_resource /api/users JWT "$ENTRA_AUTH_ID"
@@ -177,9 +209,35 @@ add_resource /api/reports JWT "$ENTRA_AUTH_ID"
 add_resource /api/audit JWT "$ENTRA_AUTH_ID"
 add_resource /api/kafka JWT "$ENTRA_AUTH_ID"
 
+bad_options=$(aws2 get-routes --api-id "$API_ID" \
+  --query "Items[?starts_with(RouteKey, 'OPTIONS ') && AuthorizationType != 'NONE'].[RouteId,RouteKey,Target]" \
+  --output text)
+if [[ -n "$bad_options" && "$bad_options" != "None" ]]; then
+  while IFS=$'\t' read -r route_id route_key route_target; do
+    [[ -z "$route_id" || "$route_id" == "None" ]] && continue
+    aws2 update-route \
+      --api-id "$API_ID" \
+      --route-id "$route_id" \
+      --route-key "$route_key" \
+      --target "$route_target" \
+      --authorization-type NONE >/dev/null
+    echo "= route $route_key [NONE]"
+  done <<< "$bad_options"
+fi
+
+remaining_options=$(aws2 get-routes --api-id "$API_ID" \
+  --query "Items[?starts_with(RouteKey, 'OPTIONS ') && AuthorizationType != 'NONE'].RouteKey" \
+  --output text)
+if [[ -n "$remaining_options" && "$remaining_options" != "None" ]]; then
+  echo "ERROR: rutas OPTIONS con autorizador: $remaining_options" >&2
+  exit 1
+fi
+
+echo "Authorizer Entra: $ENTRA_ISSUER | $ENTRA_AUDIENCE"
+
 aws2 update-api \
   --api-id "$API_ID" \
-  --cors-configuration "{\"AllowOrigins\":[\"$CORS_ORIGIN\",\"http://localhost:4200\"],\"AllowMethods\":[\"GET\",\"POST\",\"PUT\",\"DELETE\",\"PATCH\",\"OPTIONS\"],\"AllowHeaders\":[\"authorization\",\"content-type\",\"x-requested-with\"],\"ExposeHeaders\":[\"*\"],\"AllowCredentials\":false}" >/dev/null
+  --cors-configuration "{\"AllowOrigins\":$CORS_ORIGINS_JSON,\"AllowMethods\":[\"GET\",\"POST\",\"PUT\",\"DELETE\",\"PATCH\",\"OPTIONS\"],\"AllowHeaders\":[\"authorization\",\"content-type\",\"x-requested-with\"],\"ExposeHeaders\":[\"*\"],\"AllowCredentials\":false}" >/dev/null
 
 if ! aws2 get-stage --api-id "$API_ID" --stage-name "$STAGE_NAME" >/dev/null 2>&1; then
   aws2 create-stage --api-id "$API_ID" --stage-name "$STAGE_NAME" --auto-deploy >/dev/null

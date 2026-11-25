@@ -76,7 +76,7 @@
       </a>
 
       <a
-        *ngIf="isLoggedIn"
+        *ngIf="isLoggedIn || isCustomerSession"
         routerLink="/my-orders"
         routerLinkActive="active"
         (click)="menuOpen = false">
@@ -84,26 +84,18 @@
       </a>
 
       <a
-        *ngIf="!isLoggedIn && !isPublicLoggedIn"
+        *ngIf="!isLoggedIn && !isCustomerSession"
         routerLink="/publico"
         routerLinkActive="active"
         (click)="menuOpen = false">
         Área cliente
       </a>
 
-      <a
-        *ngIf="isPublicLoggedIn && !isLoggedIn"
-        routerLink="/my-orders"
-        routerLinkActive="active"
-        (click)="menuOpen = false">
-        Mis compras
-      </a>
-
       <span *ngIf="isLoggedIn && userEmail" class="user-email" title="{{ userEmail }}">
         {{ userEmail }}
       </span>
 
-      <span *ngIf="isPublicLoggedIn && !isLoggedIn && publicEmail" class="user-email" title="{{ publicEmail }}">
+      <span *ngIf="isCustomerSession && publicEmail" class="user-email" title="{{ publicEmail }}">
         {{ publicEmail }} (cliente)
       </span>
 
@@ -113,12 +105,12 @@
         <span class="cart-badge" *ngIf="cartCount > 0">{{ cartCount }}</span>
       </button>
 
-      <button *ngIf="!isLoggedIn" class="nav-btn nav-login" (click)="login()">
+      <button *ngIf="!isLoggedIn && !isCustomerSession" class="nav-btn nav-login" (click)="login()">
         Iniciar sesión
       </button>
 
       <a
-        *ngIf="!isLoggedIn"
+        *ngIf="!isLoggedIn && !isCustomerSession"
         routerLink="/register"
         routerLinkActive="active"
         class="nav-btn nav-register"
@@ -130,7 +122,7 @@
         Cerrar sesión
       </button>
 
-      <button *ngIf="isPublicLoggedIn && !isLoggedIn" class="nav-btn nav-logout" (click)="logoutPublic()">
+      <button *ngIf="isCustomerSession" class="nav-btn nav-logout" (click)="logoutPublic()">
         Salir (cliente)
       </button>
 
@@ -222,13 +214,13 @@
       </div>
 
       <input
-        *ngIf="isLoggedIn"
+        *ngIf="isLoggedIn || isCustomerSession"
         class="shipping-input"
         [(ngModel)]="shippingAddress"
         placeholder="Dirección de envío">
 
       <select
-        *ngIf="isLoggedIn"
+        *ngIf="isLoggedIn || isCustomerSession"
         class="shipping-input payment-method"
         [(ngModel)]="paymentMethod"
         aria-label="Método de pago">
@@ -238,7 +230,7 @@
       </select>
 
       <button
-        *ngIf="!isLoggedIn"
+        *ngIf="!isLoggedIn && !isCustomerSession"
         class="btn-primary checkout-btn"
         [disabled]="cartCount === 0"
         (click)="checkoutAsGuest()">
@@ -246,7 +238,7 @@
       </button>
 
       <button
-        *ngIf="isLoggedIn"
+        *ngIf="isLoggedIn || isCustomerSession"
         class="btn-primary checkout-btn"
         [disabled]="checkoutLoading || cartCount === 0"
         (click)="checkout()">

@@ -149,13 +149,19 @@ Cognito se mapea solo a `ROLE_customer`.
 
 **Pantalla:** consola AWS → API Gateway → API `3cbwduklgb`.
 
-- Authorizers `tuki-jwt` (Entra) y `tuki-cognito`.
+- Authorizers `tuki-jwt` (Entra; audiencias `api://tuki-tech-api` y
+  `66c0f84b-3701-42fb-9189-3f4092cba201`) y `tuki-cognito` (audiencia
+  `a00kh0fv055nqc8mqqmge24p7`).
 - Rutas públicas: `/api/public/products`, `/api/public/categories`,
   `/api/public/users`, `/api/public/orders`.
-- Ruta customer: `/api/customer/orders`.
+- Rutas customer con ID token Cognito: `/api/customer/orders` y
+  `/api/customer/payments`.
 - Rutas privadas: `/api/orders`, `/api/rabbit`, `/api/kafka`, `/api/reports`,
   `/api/audit`.
-- Stage `$default` con CORS, throttling y auto-deploy.
+- Stage `$default` con CORS de 10 orígenes (incluye
+  `https://pastito-247.github.io`), throttling y auto-deploy.
+- Preflight `OPTIONS` sin autorizador en todas las rutas;
+  `OPTIONS /api/kafka/{proxy+}` verificado en `200`.
 
 ```powershell
 curl "$GW/api/public/products"                         # 200
@@ -261,8 +267,15 @@ Para la ruta customer, el frontend envía el **ID token** de Cognito porque el
 access token no incluye `aud` y el authorizer lo rechazaría.
 
 Rechequeo `2026-11-20`: Pages `200`, público `200`, privado sin token `401`,
-Kafka UI `200`, evento guest con lag `0`. Si aparece `502/503`, revisa
-`systemctl is-active tuki-payments`.
+Kafka UI `200`, evento guest con lag `0`.
+
+Rechequeo `2026-11-25`: CORS con 10 orígenes en gateway y en los 9 units de
+systemd; preflight `OPTIONS /api/kafka/topics` desde
+`https://tuki-tech.vercel.app` → `200`; `/api/customer/orders` con ID token
+Cognito → `200`, sin token → `401`; `POST /api/customer/payments` con orden
+ajena → `403`; pago propio (orden `6`, pago `1`) → `201`; `/api/audit` sin token
+→ `401`. Si aparece `502/503`, espera ~70 s tras reiniciar `tuki-kafka-admin` y
+revisa `systemctl is-active tuki-payments`.
 
 ## Material de apoyo
 

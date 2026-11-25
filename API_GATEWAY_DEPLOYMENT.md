@@ -396,6 +396,7 @@ authorizer para que la preflight CORS no devuelva `401`.
 |---|---|---|
 | `/api/public/products`, `/api/public/categories`, `/api/public/users`, `/api/public/orders` | servicios 8081/8082/8083/8084 | ninguno |
 | `/api/customer/orders` | orders 8084 | `tuki-cognito` |
+| `/api/customer/payments` | payments 8086 | `tuki-cognito` |
 | `/api/products`, `/api/categories`, `/api/users`, `/api/orders` | 8081/8082/8083/8084 | `tuki-jwt` |
 | `/api/rabbit`, `/api/payments`, `/api/receipts` | 8085/8086 | `tuki-jwt` |
 | `/api/reports`, `/api/audit`, `/api/kafka` | 8087/8088/8089 | `tuki-jwt` |
@@ -447,8 +448,10 @@ curl -i -H "Authorization: Bearer $env:COGNITO_ID_TOKEN" "$api/api/rabbit/queues
 
 Resultados esperados: catálogo público `200`, guest con body inválido `400`,
 `/api/orders` sin token `401`, `/api/customer/orders` con ID token Cognito `200`,
-y `/api/rabbit/queues` con ID token Cognito `401` (la ruta usa el authorizer
-Entra y el token se rechaza antes de llegar al backend).
+`POST /api/customer/payments` con orden ajena `403`, y `/api/rabbit/queues` con
+ID token Cognito `401` (la ruta usa el authorizer Entra y el token se rechaza
+antes de llegar al backend). El authorizer Entra acepta `api://tuki-tech-api` y
+el GUID del client ID; CORS tiene 10 orígenes.
 
 ## Notas y costo
 
