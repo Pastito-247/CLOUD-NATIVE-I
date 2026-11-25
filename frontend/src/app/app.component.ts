@@ -271,14 +271,34 @@ export class AppComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!this.shippingAddress.trim()) {
+    const address = this.shippingAddress.trim();
+
+    if (!address) {
       this.cartMessage = 'Ingresa una dirección de envío.';
+      this.cartMessageIsError = true;
+      return;
+    }
+
+    if (address.length < 5 || address.length > 200) {
+      this.cartMessage = 'La dirección debe tener entre 5 y 200 caracteres.';
       this.cartMessageIsError = true;
       return;
     }
 
     if (this.cartItems.length === 0) {
       this.cartMessage = 'Tu carrito está vacío.';
+      this.cartMessageIsError = true;
+      return;
+    }
+
+    if (this.cartItems.length > 20) {
+      this.cartMessage = 'Máximo 20 productos por pedido.';
+      this.cartMessageIsError = true;
+      return;
+    }
+
+    if (this.cartItems.some(item => item.quantity > 10)) {
+      this.cartMessage = 'Máximo 10 unidades por producto.';
       this.cartMessageIsError = true;
       return;
     }
@@ -296,7 +316,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const total = this.getCartTotal();
 
     const order = {
-      shippingAddress: this.shippingAddress.trim(),
+      shippingAddress: address,
       items: items.map(item => ({ productId: item.productId, quantity: item.quantity }))
     };
 
@@ -311,7 +331,10 @@ export class AppComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Error creating order:', error);
         this.checkoutLoading = false;
-        this.cartMessage = 'No se pudo realizar la compra. Intenta de nuevo.';
+        const detail = error?.error?.message || error?.error?.error;
+        this.cartMessage = detail && detail !== 'Bad Request'
+          ? detail
+          : 'No se pudo realizar la compra. Intenta de nuevo.';
         this.cartMessageIsError = true;
       }
     });

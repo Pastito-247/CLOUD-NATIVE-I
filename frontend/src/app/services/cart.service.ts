@@ -7,6 +7,7 @@ export interface CartItem {
 }
 
 const CART_KEY = 'tuki-cart';
+const MAX_QUANTITY_PER_ITEM = 10;
 
 @Injectable({
   providedIn: 'root'
@@ -100,8 +101,21 @@ export class CartService {
   private load(): CartItem[] {
     try {
       const raw = localStorage.getItem(CART_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
 
-      return raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return parsed
+        .filter(item => item?.product?.id != null)
+        .map(item => ({
+          product: item.product,
+          quantity: Math.max(
+            1,
+            Math.min(Number(item.quantity) || 1, this.maxAvailable(item.product))
+          )
+        }));
     } catch {
       return [];
     }
@@ -109,7 +123,8 @@ export class CartService {
 
   private maxAvailable(product: any): number {
     const stock = Number(product.stockQuantity);
+    const limitedStock = Number.isFinite(stock) && stock >= 0 ? stock : Infinity;
 
-    return Number.isFinite(stock) && stock >= 0 ? stock : Infinity;
+    return Math.min(limitedStock, MAX_QUANTITY_PER_ITEM);
   }
 }
